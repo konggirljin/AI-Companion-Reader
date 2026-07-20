@@ -28,6 +28,7 @@ export interface Book {
   toc: TocEntry[];
   addedAt: number;
   order: number;
+  chapterCount: number;
   progress?: { chapterId: string; paragraphId: string };
 }
 

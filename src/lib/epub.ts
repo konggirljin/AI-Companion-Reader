@@ -174,7 +174,7 @@ export async function parseEpub(data: ArrayBuffer): Promise<ParsedBook> {
 
     // 3. TOC: EPUB3 nav → else EPUB2 ncx → else spine fallback
     let toc: TocEntry[] = [];
-    const navItem = [...manifest.values()].find((i) => i.properties.split(/\s+/).includes('nav'));
+    const navItem = Array.from(manifest.values()).find((i) => i.properties.split(/\s+/).includes('nav'));
     if (navItem) {
       const navPath = resolvePath(opfDir, navItem.href);
       const navDoc = parseXml((await zip.file(navPath)?.async('text')) ?? '');
@@ -184,7 +184,7 @@ export async function parseEpub(data: ArrayBuffer): Promise<ParsedBook> {
       if (navEl) toc = tocFromNav(navEl, dirOf(navPath), chapterIdByPath);
     }
     if (!toc.length) {
-      const ncxItem = [...manifest.values()].find((i) => i.mediaType === 'application/x-dtbncx+xml');
+      const ncxItem = Array.from(manifest.values()).find((i) => i.mediaType === 'application/x-dtbncx+xml');
       if (ncxItem) {
         const ncxPath = resolvePath(opfDir, ncxItem.href);
         toc = tocFromNcx(parseXml((await zip.file(ncxPath)?.async('text')) ?? ''), dirOf(ncxPath), chapterIdByPath);
@@ -214,7 +214,7 @@ export async function parseEpub(data: ArrayBuffer): Promise<ParsedBook> {
 
     // 5. Cover: cover-image property → meta name="cover" → first chapter image (spec §5.6)
     let cover: Blob | undefined;
-    const coverItem = [...manifest.values()].find((i) => i.properties.split(/\s+/).includes('cover-image'));
+    const coverItem = Array.from(manifest.values()).find((i) => i.properties.split(/\s+/).includes('cover-image'));
     if (coverItem) cover = await blobAt(zip, resolvePath(opfDir, coverItem.href));
     if (!cover) {
       const metaCover = Array.from(opfDoc.getElementsByTagName('meta')).find((m) => m.getAttribute('name') === 'cover');

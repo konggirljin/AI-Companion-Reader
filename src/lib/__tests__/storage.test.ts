@@ -28,16 +28,16 @@ describe('local.ts', () => {
 
 describe('books.ts', () => {
   it('creates books with increasing order and renames', () => {
-    const a = createBook({ id: 'b1', title: 'A', author: '', format: 'txt', toc: [], coverRef: undefined, progress: undefined });
-    const b = createBook({ id: 'b2', title: 'B', author: '', format: 'epub', toc: [], coverRef: undefined, progress: undefined });
+    const a = createBook({ id: 'b1', title: 'A', author: '', format: 'txt', toc: [], coverRef: undefined, chapterCount: 1, progress: undefined });
+    const b = createBook({ id: 'b2', title: 'B', author: '', format: 'epub', toc: [], coverRef: undefined, chapterCount: 1, progress: undefined });
     expect(listBooks().map((x) => x.id)).toEqual(['b1', 'b2']);
     expect(b.order).toBeGreaterThan(a.order);
     renameBook('b1', 'A2');
     expect(getBook('b1')!.title).toBe('A2');
   });
   it('reorders and saves progress', () => {
-    createBook({ id: 'b1', title: 'A', author: '', format: 'txt', toc: [], coverRef: undefined, progress: undefined });
-    createBook({ id: 'b2', title: 'B', author: '', format: 'txt', toc: [], coverRef: undefined, progress: undefined });
+    createBook({ id: 'b1', title: 'A', author: '', format: 'txt', toc: [], coverRef: undefined, chapterCount: 1, progress: undefined });
+    createBook({ id: 'b2', title: 'B', author: '', format: 'txt', toc: [], coverRef: undefined, chapterCount: 1, progress: undefined });
     reorderBooks(['b2', 'b1']);
     expect(listBooks().map((x) => x.id)).toEqual(['b2', 'b1']);
     saveProgress('b1', '3', '3:12');

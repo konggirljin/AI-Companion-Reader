@@ -1,7 +1,7 @@
 import type { Book } from '@/lib/types';
 import { K } from './keys';
 import { readJson, writeJson } from './local';
-import { idbDel, idbDelMany, idbKeys } from './idb';
+import { idbDelMany, idbKeys } from './idb';
 import { deleteThreadsForBook } from './threads';
 import { deleteBookmarksForBook } from './bookmarks';
 
@@ -37,7 +37,7 @@ export async function deleteBook(id: string): Promise<void> {
   writeBooks(listBooks().filter((b) => b.id !== id));
   deleteThreadsForBook(id);
   deleteBookmarksForBook(id);
-  const chapterKeys = (book?.toc ?? []).map((t) => idbKeys.chapter(id, t.chapterId));
+  const chapterKeys = Array.from({ length: book?.chapterCount ?? 0 }, (_, i) => idbKeys.chapter(id, String(i)));
   await idbDelMany([idbKeys.file(id), idbKeys.cover(id), ...chapterKeys]).catch(() => {});
 }
 
