@@ -1,13 +1,18 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, BookmarkPlus } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Book, ParsedChapter, Paragraph } from '@/lib/types';
+import type { Book, ParsedChapter, Paragraph, ReaderPrefs } from '@/lib/types';
 import { idbGet, idbKeys } from '@/lib/storage/idb';
 import { saveProgress } from '@/lib/storage/books';
-import { getPrefs } from '@/lib/storage/settings';
+import { getPrefs, savePrefs } from '@/lib/storage/settings';
+import { addBookmark } from '@/lib/storage/bookmarks';
 import { ReaderTopbar } from './reader-topbar';
+import { TocDrawer } from './toc-drawer';
+import { BookmarksPanel } from './bookmarks-panel';
+import { ReaderSettings } from './reader-settings';
 
 function ParagraphBlock({ p, imageUrls }: { p: Paragraph; imageUrls: Map<string, string> }) {
   if (p.tag.startsWith('h')) {
@@ -32,10 +37,13 @@ export function ReaderView({ book }: { book: Book }) {
   const [chapterId, setChapterId] = useState<string>(book.progress?.chapterId ?? book.toc[0]?.chapterId ?? '0');
   const [chapter, setChapter] = useState<ParsedChapter | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  // Paragraph to scroll to when the next chapter finishes rendering.
-  // Initialized from saved progress; Task 7's jumpTo also writes it (the Book prop never updates in-session).
   const restorePidRef = useRef<string | null>(book.progress?.paragraphId ?? null);
-  const prefs = getPrefs();
+  const [prefs, setPrefs] = useState<ReaderPrefs>(() => getPrefs());
+  const [tocOpen, setTocOpen] = useState(false);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const updatePrefs = (next: ReaderPrefs) => { setPrefs(next); savePrefs(next); };
 
   // Load chapter from IndexedDB
   useEffect(() => {
@@ -94,13 +102,37 @@ export function ReaderView({ book }: { book: Book }) {
     if (next >= 0 && next < book.chapterCount) setChapterId(String(next));
   }, [chapterIndex, book.chapterCount]);
 
+  const firstVisiblePid = (): string | null => {
+    for (const el of Array.from(document.querySelectorAll('[data-pid]'))) {
+      if (el.getBoundingClientRect().top >= 0) return el.getAttribute('data-pid');
+    }
+    return null;
+  };
+
+  const addBookmarkHere = () => {
+    const pid = firstVisiblePid();
+    if (!pid) return;
+    addBookmark({ bookId: book.id, chapterId, paragraphId: pid });
+    toast.success('Bookmark added');
+  };
+
+  const jumpTo = (targetChapterId: string, paragraphId: string) => {
+    if (targetChapterId === chapterId) {
+      document.querySelector(`[data-pid="${CSS.escape(paragraphId)}"]`)?.scrollIntoView({ block: 'start' });
+    } else {
+      restorePidRef.current = paragraphId;
+      saveProgress(book.id, targetChapterId, paragraphId);
+      setChapterId(targetChapterId);
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col">
       <ReaderTopbar
         title={book.title}
-        onToc={() => {}}
-        onBookmarks={() => {}}
-        onSettings={() => {}}
+        onToc={() => setTocOpen(true)}
+        onBookmarks={() => setBookmarksOpen(true)}
+        onSettings={() => setSettingsOpen(true)}
       />
       <div
         id="reader-content"
@@ -128,6 +160,20 @@ export function ReaderView({ book }: { book: Book }) {
           </>
         )}
       </div>
+      <TocDrawer open={tocOpen} onOpenChange={setTocOpen} toc={book.toc} currentChapterId={chapterId} onSelect={(cid) => { window.scrollTo({ top: 0 }); setChapterId(cid); }} />
+      <BookmarksPanel
+        open={bookmarksOpen} onOpenChange={setBookmarksOpen} bookId={book.id}
+        tocTitles={new Map(book.toc.map((t) => [t.chapterId, t.title]))}
+        onJump={jumpTo}
+      />
+      <ReaderSettings open={settingsOpen} onOpenChange={setSettingsOpen} prefs={prefs} onChange={updatePrefs} />
+      <Button
+        variant="secondary" size="icon"
+        className="fixed bottom-6 right-6 z-40 h-11 w-11 rounded-full shadow-lg"
+        onClick={addBookmarkHere} aria-label="Bookmark here"
+      >
+        <BookmarkPlus className="h-5 w-5" />
+      </Button>
     </div>
   );
 }
