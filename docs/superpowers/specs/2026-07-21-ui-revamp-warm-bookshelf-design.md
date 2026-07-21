@@ -224,7 +224,7 @@ Before declaring done:
 - `next/font/google` for Nunito requires network access at build time to self-host the font. If the build environment is offline, switch to `@fontsource/nunito`. Confirm during phase 1.
 - The current `globals.css` uses oklch tokens while `tailwind.config.ts` wraps them with `hsl(...)`; this mismatch is fixed by writing the new tokens as HSL channel triplets. Verify a sample component renders the correct warm color before mass-styling.
 - Drag-to-reorder across chunked shelf rows is the most intricate part; budget extra testing here and have a fallback (e.g. move via book menu) if the drag feel degrades.
-- Forcing dark theme globally re-tints the reader too (unavoidable). The reader layout is unchanged; only its colors move to warm. Flag to owner if they object after seeing it.
+- Forcing dark theme globally re-tints the reader too. Owner confirmed on 2026-07-21: the reading screen should turn warm to match the bookshelf. The reader layout is unchanged; only its colors move to warm. No further action needed on this risk.
 - Sub-agent review during planning returned empty results due to a tooling issue; the design was reviewed directly against the Figma source (`reference/.../src/app/App.tsx`) and the template image instead.
 
 ## 12. Implementation phases
