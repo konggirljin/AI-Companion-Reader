@@ -46,6 +46,16 @@ export function ReaderSettings({ open, onOpenChange, prefs, onChange }: ReaderSe
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-2">
+          <Label>Reading theme</Label>
+          <Select value={prefs.theme} onValueChange={(v) => onChange({ ...prefs, theme: v as ReaderPrefs['theme'] })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="amber">Amber (dark)</SelectItem>
+              <SelectItem value="warmWhite">Warm white</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </DialogContent>
     </Dialog>
   );
