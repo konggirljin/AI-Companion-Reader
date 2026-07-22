@@ -59,14 +59,18 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
   pageIndexRef.current = pageIndex;
   const overLimitNotifiedRef = useRef(false);
 
+  const pageWidthRef = useRef(GAP);
+
   const reflow = useCallback(() => {
     const flow = flowRef.current, vp = viewportRef.current;
     if (!flow || !vp) return;
     const displayHeight = (flow.parentNode as HTMLElement).clientHeight;
     flow.style.height = `${displayHeight}px`;
-    const pageWidth = vp.clientWidth + GAP;
-    flow.style.columnWidth = `${vp.clientWidth}px`;
+    const colWidth = flow.clientWidth || vp.clientWidth - 40;
+    flow.style.columnWidth = `${colWidth}px`;
     flow.style.columnGap = `${GAP}px`;
+    const pageWidth = colWidth + GAP;
+    pageWidthRef.current = pageWidth;
     // images capped relative to flow height
     const n = Math.max(1, Math.round(flow.scrollWidth / pageWidth));
     onPageCountChange(n);
@@ -199,7 +203,7 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
           columnFill: 'auto',
           height: '100%',
           willChange: 'transform',
-          transform: `translateX(${-(pageIndex * (viewportRef.current ? viewportRef.current.clientWidth + GAP : 0))}px)`,
+          transform: `translateX(${-(pageIndex * (pageWidthRef.current || GAP))}px)`,
           transition: 'transform 250ms ease-out',
         } as React.CSSProperties}
       >
