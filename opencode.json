@@ -6,16 +6,18 @@
     "general": {
       "description": "Implements plan tasks, runs tests, fixes code per plan instructions",
       "mode": "subagent",
-      "model": "opencode/deepseek-v4-pro"
+      "model": "opencode-go/mimo-v2.5"
+      "task": true
     },
     "explore": {
       "description": "Explores codebase — file search, read, grep. No edits",
       "mode": "subagent",
-      "model": "opencode/deepseek-v4-flash"
+      "model": "opencode-go/mimo-v2.5"
+       "task": true
     },
     "plan": {
       "mode": "primary",
-      "model": "opencode/deepseek-v4-pro",
+      "model": "opencode-go/glm-5.2",
       "permission": {
         "edit": "deny",
         "bash": "deny"
