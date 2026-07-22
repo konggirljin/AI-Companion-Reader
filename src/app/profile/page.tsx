@@ -1,6 +1,7 @@
 'use client';
 import { SettingsForm } from '@/components/settings/settings-form';
 import { SystemPromptEditor } from '@/components/settings/system-prompt-editor';
+import { UserPersonaSection } from '@/components/profile/user-persona-section';
 
 export default function ProfilePage() {
   return (
@@ -17,6 +18,7 @@ export default function ProfilePage() {
         <span className="text-xs text-muted-foreground">v0.1.0</span>
       </header>
       <div className="flex-1 space-y-6 overflow-y-auto px-4 pb-24" style={{ scrollbarWidth: 'none' }}>
+        <UserPersonaSection />
         <SettingsForm />
         <SystemPromptEditor />
       </div>

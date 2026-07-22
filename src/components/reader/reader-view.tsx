@@ -245,6 +245,7 @@ export function ReaderView({ book }: { book: Book }) {
         onComments={() => setCommentsOpen(true)}
         onSettings={() => setSettingsOpen(true)}
         activeUserPersonaId={activeUserPersonaId}
+        onUserPersonaActivate={(id) => setActiveUserPersonaId(id)}
       />
       {!chapter ? (
         <div className="mx-auto w-full max-w-2xl flex-1 px-5 py-6 space-y-4">
