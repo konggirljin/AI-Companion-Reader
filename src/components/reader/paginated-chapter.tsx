@@ -1,0 +1,221 @@
+'use client';
+import { useCallback, useEffect, useRef } from 'react';
+import type { ParsedChapter, Paragraph, Persona, ReaderPrefs, Thread } from '@/lib/types';
+import type { ResolvedSelection } from '@/lib/selection';
+import { readerContentStyle } from '@/lib/reader-themes';
+import { resolveSelection } from '@/lib/selection';
+import { countWords } from '@/lib/word-count';
+import { CommentPopover } from './comment-popover';
+import { SelectionToolbar } from './selection-toolbar';
+
+export const PAGE_FLIP_EVENT = 'arc:page-flip';
+
+const GAP = 40;
+
+function ParagraphBlock({ p, imageUrls }: { p: Paragraph; imageUrls: Map<string, string> }) {
+  if (p.tag.startsWith('h')) {
+    const Tag = p.tag as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+    return <Tag data-pid={p.id} className="mb-4 mt-8 font-semibold">{p.text}</Tag>;
+  }
+  return (
+    <p data-pid={p.id} className={p.tag === 'blockquote' ? 'mb-4 border-l-2 pl-4 italic' : 'mb-4'}>
+      {p.text}
+      {p.images?.map((img) => {
+        const url = imageUrls.get(img.path);
+        return url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={img.path} src={url} alt={img.alt ?? ''} className="my-3 max-h-[60vh] rounded-md object-contain" />
+        ) : null;
+      })}
+    </p>
+  );
+}
+
+interface PaginatedChapterProps {
+  chapter: ParsedChapter;
+  imageUrls: Map<string, string>;
+  prefs: ReaderPrefs;
+  pageIndex: number;
+  pageCount: number;
+  onPageCountChange: (n: number) => void;
+  onFirstVisiblePidChange: (pid: string) => void;
+  chapterThreads: Thread[];
+  pendingPids: string[];
+  personas: Persona[];
+  registerSelectionContainer: (el: HTMLDivElement | null) => void;
+  onSelectionResolve: (resolved: ResolvedSelection | null) => void;
+  onToolbarPos: (pos: { x: number; y: number } | null) => void;
+  onSend: () => void;
+  registerBackNav: (goDelta: (d: number) => void) => void;
+}
+
+export function PaginatedChapter(props: PaginatedChapterProps) {
+  const { chapter, imageUrls, prefs, pageIndex, pageCount, onPageCountChange, onFirstVisiblePidChange,
+    chapterThreads, pendingPids, personas, registerSelectionContainer, onSelectionResolve,
+    onToolbarPos, onSend, registerBackNav } = props;
+
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const flowRef = useRef<HTMLDivElement>(null);
+  const pageIndexRef = useRef(pageIndex);
+  pageIndexRef.current = pageIndex;
+  const overLimitNotifiedRef = useRef(false);
+  const toolbarOffsetRef = useRef(0);
+
+  const reflow = useCallback(() => {
+    const flow = flowRef.current, vp = viewportRef.current;
+    if (!flow || !vp) return;
+    const displayHeight = (flow.parentNode as HTMLElement).clientHeight;
+    flow.style.height = `${displayHeight}px`;
+    const pageWidth = vp.clientWidth + GAP;
+    flow.style.columnWidth = `${vp.clientWidth}px`;
+    flow.style.columnGap = `${GAP}px`;
+    // images capped relative to flow height
+    const n = Math.max(1, Math.round(flow.scrollWidth / pageWidth));
+    onPageCountChange(n);
+    // report first visible pid on current page
+    const leftBoundary = pageIndexRef.current * pageWidth;
+    const rightBoundary = leftBoundary + pageWidth;
+    let firstPid: string | null = null;
+    for (const el of Array.from(flow.querySelectorAll<HTMLElement>('[data-pid]'))) {
+      const left = el.offsetLeft;
+      const right = left + el.offsetWidth;
+      if (right > leftBoundary && left < rightBoundary) { firstPid = el.getAttribute('data-pid'); break; }
+    }
+    if (firstPid) onFirstVisiblePidChange(firstPid);
+  }, [onPageCountChange, onFirstVisiblePidChange]);
+
+  // reflow on chapter + prefs change
+  useEffect(() => {
+    const raf = requestAnimationFrame(reflow);
+    return () => cancelAnimationFrame(raf);
+  }, [chapter, prefs.fontSize, prefs.lineSpacing, prefs.fontFamily, prefs.theme, reflow]);
+
+  // reflow on resize (debounced)
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
+    const onResize = () => { clearTimeout(t); t = setTimeout(reflow, 250); };
+    window.addEventListener('resize', onResize);
+    return () => { window.removeEventListener('resize', onResize); clearTimeout(t); };
+  }, [reflow]);
+
+  // expose navigation
+  useEffect(() => {
+    registerBackNav((d: number) => {
+      // handled by parent; this is a no-op placeholder so parent owns state
+      void d;
+    });
+  }, [registerBackNav]);
+
+  // keyboard arrows
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: -1 }));
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: 1 }));
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // swipe via pointer events
+  useEffect(() => {
+    let startX = 0, startY = 0, active = false;
+    const vp = viewportRef.current;
+    if (!vp) return;
+    const down = (e: PointerEvent) => { active = true; startX = e.clientX; startY = e.clientY; };
+    const up = (e: PointerEvent) => {
+      if (!active) return;
+      active = false;
+      const dx = e.clientX - startX, dy = e.clientY - startY;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+        window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: dx < 0 ? 1 : -1 }));
+      }
+    };
+    vp.addEventListener('pointerdown', down);
+    window.addEventListener('pointerup', up);
+    return () => { vp.removeEventListener('pointerdown', down); window.removeEventListener('pointerup', up); };
+  }, [chapter]);
+
+  // selection tracking (delegated to reader-view via callbacks)
+  useEffect(() => {
+    const container = flowRef.current;
+    if (!container) return;
+    registerSelectionContainer(container);
+    const update = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+        onToolbarPos(null);
+        overLimitNotifiedRef.current = false;
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      if (!container.contains(range.commonAncestorContainer)) { onToolbarPos(null); return; }
+      const resolved = resolveSelection(range, container);
+      if (!resolved) { onToolbarPos(null); return; }
+      if (countWords(resolved.text) > 2000) {
+        onToolbarPos(null); onSelectionResolve(null);
+        if (!overLimitNotifiedRef.current) {
+          overLimitNotifiedRef.current = true;
+          import('sonner').then(({ toast }) => toast.error('Select a shorter passage (max 2000 words)'));
+        }
+        return;
+      }
+      onSelectionResolve(resolved);
+      const rect = range.getBoundingClientRect();
+      const vp = viewportRef.current;
+      const vpRect = vp?.getBoundingClientRect();
+      const offset = pageIndexRef.current * (vp ? vp.clientWidth + GAP : 0);
+      let x = rect.left + rect.width / 2 + offset;
+      if (vpRect) x = Math.min(Math.max(x, vpRect.left + 40), vpRect.right - 40);
+      onToolbarPos({ x, y: rect.bottom + 8 });
+    };
+    let t: ReturnType<typeof setTimeout>;
+    const onChange = () => update();
+    const onTouchEnd = () => { clearTimeout(t); t = setTimeout(update, 350); };
+    document.addEventListener('selectionchange', onChange);
+    container.addEventListener('touchend', onTouchEnd);
+    return () => {
+      document.removeEventListener('selectionchange', onChange);
+      container.removeEventListener('touchend', onTouchEnd);
+      clearTimeout(t);
+      registerSelectionContainer(null);
+    };
+  }, [chapter, onSelectionResolve, onToolbarPos, registerSelectionContainer]);
+
+  return (
+    <div
+      ref={viewportRef}
+      className="relative mx-auto w-full max-w-2xl flex-1 px-5 py-6 overflow-hidden"
+      style={{ ...readerContentStyle(prefs.theme), fontSize: prefs.fontSize, lineHeight: prefs.lineSpacing, fontFamily: prefs.fontFamily }}
+    >
+      <h2 className="mb-2 text-xl font-bold">{chapter.title}</h2>
+      <div
+        ref={flowRef}
+        style={{
+          columnWidth: '100%',
+          columnGap: `${GAP}px`,
+          columnFill: 'auto',
+          height: '100%',
+          willChange: 'transform',
+          transform: `translateX(${-(pageIndex * (viewportRef.current ? viewportRef.current.clientWidth + GAP : 0))}px)`,
+          transition: 'transform 250ms ease-out',
+        } as React.CSSProperties}
+      >
+        {chapter.paragraphs.map((p) => (
+          <div key={p.id} className="break-inside-avoid-column">
+            <ParagraphBlock p={p} imageUrls={imageUrls} />
+            <CommentPopover
+              threads={chapterThreads.filter((t) => t.paragraphId === p.id)}
+              pending={pendingPids.includes(p.id)}
+              personas={personas}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
