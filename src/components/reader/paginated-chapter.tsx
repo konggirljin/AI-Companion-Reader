@@ -6,7 +6,6 @@ import { readerContentStyle } from '@/lib/reader-themes';
 import { resolveSelection } from '@/lib/selection';
 import { countWords } from '@/lib/word-count';
 import { CommentPopover } from './comment-popover';
-import { SelectionToolbar } from './selection-toolbar';
 
 export const PAGE_FLIP_EVENT = 'arc:page-flip';
 
@@ -52,14 +51,13 @@ interface PaginatedChapterProps {
 export function PaginatedChapter(props: PaginatedChapterProps) {
   const { chapter, imageUrls, prefs, pageIndex, pageCount, onPageCountChange, onFirstVisiblePidChange,
     chapterThreads, pendingPids, personas, registerSelectionContainer, onSelectionResolve,
-    onToolbarPos, onSend, registerBackNav } = props;
+    onToolbarPos, registerBackNav } = props;
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const flowRef = useRef<HTMLDivElement>(null);
   const pageIndexRef = useRef(pageIndex);
   pageIndexRef.current = pageIndex;
   const overLimitNotifiedRef = useRef(false);
-  const toolbarOffsetRef = useRef(0);
 
   const reflow = useCallback(() => {
     const flow = flowRef.current, vp = viewportRef.current;
