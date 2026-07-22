@@ -304,3 +304,20 @@ bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent
 ```
 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center
 ```
+
+---
+
+## Reading Themes (reader scoped)
+
+Two palettes override CSS variables **only inside `#reader-content`**. The app shell stays dark-only; this does not relax the dark-only rule for the rest of the app.
+
+| theme | `--reader-bg` | `--reader-text` | `--reader-muted` |
+|---|---|---|---|
+| `amber` (default) | `#26180A` | `#F0DCC0` | `#8A6038` |
+| `warmWhite` | `#FAF4E8` | `#2A1F0E` | `#7A6448` |
+
+- Applied inline on the reader content container (`readerContentStyle(theme)` in `src/lib/reader-themes.ts`).
+- Stored in `ReaderPrefs.theme`. Default `amber` for backward continuity with the existing dark palette.
+- Chosen via the "Reading theme" select in the reader settings dialog.
+- Components rendered outside `#reader-content` (`SelectionToolbar`, `CommentPopover` anchor bubbles, topbar, drawers) keep the locked dark palette.
+```
