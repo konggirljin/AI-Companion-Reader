@@ -77,6 +77,15 @@ describe('sendToPersonas', () => {
     await expect(sendToPersonas(excerpt, [persona], settings)).rejects.toThrow('API_ERROR_500');
   });
 
+  it('routes through proxy when proxyUrl is set', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(apiResponse('{"comments":[]}'));
+    vi.stubGlobal('fetch', fetchMock);
+    const proxiedSettings = { ...settings, proxyUrl: 'http://localhost:8787' };
+    await sendToPersonas(excerpt, [persona], proxiedSettings);
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toBe('http://localhost:8787?url=https%3A%2F%2Fapi.test%2Fv1%2Fchat%2Fcompletions');
+  });
+
   it('passes user persona context into the system message when provided', async () => {
     const fetchMock = vi.fn().mockResolvedValue(apiResponse('{"comments":[]}'));
     vi.stubGlobal('fetch', fetchMock);

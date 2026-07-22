@@ -4,3 +4,7 @@ Task 2: complete (commits 1a761ca+06d1fe0, review approved)
 Task 3: complete (commits 4ec8808+b7c715e, review approved after fixes)
 Task 4: complete (commit 9e4be72, review approved)
 Task 5: complete (commit 0b18576, theme picker added to reader-settings)
+Task 6: complete (commit 26c0622, comments drawer)
+Task 7: complete (commit 8fffd85, profile+switcher)
+Task 8: complete (commit fb24ac4, DESIGN.md)
+All 8 tasks: 45/45 tests, tsc/lint/build clean
