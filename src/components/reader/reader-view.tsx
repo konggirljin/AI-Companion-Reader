@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Book, ParsedChapter, Paragraph, Persona, ReaderPrefs, Thread } from '@/lib/types';
+import type { Book, ParsedChapter, Persona, ReaderPrefs, Thread } from '@/lib/types';
 import { idbGet, idbKeys } from '@/lib/storage/idb';
 import { saveProgress } from '@/lib/storage/books';
 import { getPrefs, savePrefs } from '@/lib/storage/settings';
@@ -14,47 +14,34 @@ import { listPersonas } from '@/lib/storage/personas';
 import { getSettings } from '@/lib/storage/settings';
 import { addThreads, listThreads } from '@/lib/storage/threads';
 import { sendToPersonas } from '@/lib/ai';
-import { countWords } from '@/lib/word-count';
-import { resolveSelection, type ResolvedSelection } from '@/lib/selection';
+import type { ResolvedSelection } from '@/lib/selection';
 import { ReaderTopbar } from './reader-topbar';
 import { TocDrawer } from './toc-drawer';
 import { BookmarksPanel } from './bookmarks-panel';
 import { ReaderSettings } from './reader-settings';
 import { SelectionToolbar } from './selection-toolbar';
 import { PersonaPicker } from './persona-picker';
-import { CommentPopover } from './comment-popover';
+import { PaginatedChapter, PAGE_FLIP_EVENT } from './paginated-chapter';
+import { getActiveUserPersonaId, getUserPersona } from '@/lib/storage/user-personas';
+import type { UserPersona } from '@/lib/types';
 
-function ParagraphBlock({ p, imageUrls }: { p: Paragraph; imageUrls: Map<string, string> }) {
-  if (p.tag.startsWith('h')) {
-    const Tag = p.tag as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
-    return <Tag data-pid={p.id} className="mb-4 mt-8 font-semibold">{p.text}</Tag>;
-  }
-  return (
-    <p data-pid={p.id} className={p.tag === 'blockquote' ? 'mb-4 border-l-2 pl-4 italic text-muted-foreground' : 'mb-4'}>
-      {p.text}
-      {p.images?.map((img) => {
-        const url = imageUrls.get(img.path);
-        return url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={img.path} src={url} alt={img.alt ?? ''} className="my-3 max-h-80 rounded-md object-contain" />
-        ) : null;
-      })}
-    </p>
-  );
-}
+
 
 export function ReaderView({ book }: { book: Book }) {
   const router = useRouter();
   const [chapterId, setChapterId] = useState<string>(book.progress?.chapterId ?? book.toc[0]?.chapterId ?? '0');
   const [chapter, setChapter] = useState<ParsedChapter | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+
   const restorePidRef = useRef<string | null>(book.progress?.paragraphId ?? null);
+  const restorePageRef = useRef<number>(book.progress?.pageIndex ?? 0);
   const [prefs, setPrefs] = useState<ReaderPrefs>(() => getPrefs());
   const [tocOpen, setTocOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
 
-  // Selection + send state
+  const [pageIndex, setPageIndex] = useState(restorePageRef.current);
+  const [pageCount, setPageCount] = useState(1);
   const [selection, setSelection] = useState<ResolvedSelection | null>(null);
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -62,6 +49,7 @@ export function ReaderView({ book }: { book: Book }) {
   const [pendingPids, setPendingPids] = useState<string[]>([]);
   const [threadsVersion, setThreadsVersion] = useState(0);
   const personas: Persona[] = useMemo(() => listPersonas(), []);
+  const [activeUserPersonaId, setActiveUserPersonaId] = useState<string | null>(() => getActiveUserPersonaId());
 
   const updatePrefs = (next: ReaderPrefs) => { setPrefs(next); savePrefs(next); };
 
@@ -83,86 +71,29 @@ export function ReaderView({ book }: { book: Book }) {
   }, [chapter]);
   useEffect(() => () => { for (const url of imageUrls.values()) URL.revokeObjectURL(url); }, [imageUrls]);
 
-  // Restore scroll position when a chapter finishes loading
+  // Restore page on chapter load
   useEffect(() => {
     if (!chapter) return;
     const targetPid = restorePidRef.current;
     restorePidRef.current = null;
     if (targetPid) {
       requestAnimationFrame(() => {
-        document.querySelector(`[data-pid="${CSS.escape(targetPid)}"]`)?.scrollIntoView({ block: 'start' });
+        const flow = document.querySelector('[data-pid]')?.parentElement;
+        // find column containing pid → compute pageIndex
+        const el = document.querySelector(`[data-pid="${CSS.escape(targetPid)}"]`) as HTMLElement | null;
+        if (el) {
+          const flowEl = el.parentElement?.parentElement as HTMLElement; // .break-inside wrapper → flow
+          if (flowEl) {
+            const pageWidth = (flowEl.parentElement as HTMLElement).clientWidth + 40;
+            const colIdx = Math.round(el.offsetLeft / pageWidth);
+            setPageIndex(Math.max(0, colIdx));
+          }
+        }
       });
-    } else {
-      window.scrollTo({ top: 0 });
     }
   }, [chapter]);
 
-  // Save progress on scroll (debounced)
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    const onScroll = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        const blocks = document.querySelectorAll('[data-pid]');
-        for (const el of Array.from(blocks)) {
-          if (el.getBoundingClientRect().top >= 0) {
-            saveProgress(book.id, chapterId, el.getAttribute('data-pid')!, 0);
-            break;
-          }
-        }
-      }, 400);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => { window.removeEventListener('scroll', onScroll); clearTimeout(timer); };
-  }, [book.id, chapterId]);
 
-  // Selection tracking
-  const overLimitNotifiedRef = useRef(false);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const update = () => {
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
-        setToolbarPos(null);
-        overLimitNotifiedRef.current = false;
-        return;
-      }
-      const range = sel.getRangeAt(0);
-      if (!container.contains(range.commonAncestorContainer)) {
-        setToolbarPos(null);
-        return;
-      }
-      const resolved = resolveSelection(range, container);
-      if (!resolved) { setToolbarPos(null); return; }
-      if (countWords(resolved.text) > 2000) {
-        setToolbarPos(null);
-        setSelection(null);
-        if (!overLimitNotifiedRef.current) {
-          overLimitNotifiedRef.current = true;
-          toast.error('Select a shorter passage (max 2000 words)');
-        }
-        return;
-      }
-      setSelection(resolved);
-      const rect = range.getBoundingClientRect();
-      setToolbarPos({ x: rect.left + rect.width / 2, y: rect.bottom + 8 });
-    };
-
-    let touchTimer: ReturnType<typeof setTimeout>;
-    const onSelectionChange = () => update();
-    const onTouchEnd = () => { clearTimeout(touchTimer); touchTimer = setTimeout(update, 350); };
-
-    document.addEventListener('selectionchange', onSelectionChange);
-    container.addEventListener('touchend', onTouchEnd);
-    return () => {
-      document.removeEventListener('selectionchange', onSelectionChange);
-      container.removeEventListener('touchend', onTouchEnd);
-      clearTimeout(touchTimer);
-    };
-  }, [chapter]);
 
   const chapterIndex = Number(chapterId);
   const goChapter = useCallback((delta: number) => {
@@ -170,15 +101,41 @@ export function ReaderView({ book }: { book: Book }) {
     if (next >= 0 && next < book.chapterCount) setChapterId(String(next));
   }, [chapterIndex, book.chapterCount]);
 
-  const firstVisiblePid = (): string | null => {
-    for (const el of Array.from(document.querySelectorAll('[data-pid]'))) {
-      if (el.getBoundingClientRect().top >= 0) return el.getAttribute('data-pid');
-    }
-    return null;
-  };
+  const firstVisiblePidRef = useRef<string | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handlePageCount = useCallback((n: number) => {
+    setPageCount(n);
+    setPageIndex((i) => Math.min(i, Math.max(0, n - 1)));
+  }, []);
+
+  const handleFirstVisiblePid = useCallback((pid: string) => {
+    firstVisiblePidRef.current = pid;
+    // debounced save
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      if (firstVisiblePidRef.current) saveProgress(book.id, chapterId, firstVisiblePidRef.current, pageIndex);
+    }, 800);
+  }, [book.id, chapterId, pageIndex]);
+
+  const goPage = useCallback((delta: number) => {
+    setPageIndex((i) => {
+      const next = Math.min(Math.max(0, i + delta), Math.max(0, pageCount - 1));
+      return next;
+    });
+  }, [pageCount]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<number>).detail;
+      if (typeof detail === 'number') goPage(detail);
+    };
+    window.addEventListener(PAGE_FLIP_EVENT, handler);
+    return () => window.removeEventListener(PAGE_FLIP_EVENT, handler);
+  }, [goPage]);
 
   const addBookmarkHere = () => {
-    const pid = firstVisiblePid();
+    const pid = firstVisiblePidRef.current;
     if (!pid) return;
     addBookmark({ bookId: book.id, chapterId, paragraphId: pid });
     toast.success('Bookmark added');
@@ -186,11 +143,20 @@ export function ReaderView({ book }: { book: Book }) {
 
   const jumpTo = (targetChapterId: string, paragraphId: string) => {
     if (targetChapterId === chapterId) {
-      document.querySelector(`[data-pid="${CSS.escape(paragraphId)}"]`)?.scrollIntoView({ block: 'start' });
+      const el = document.querySelector(`[data-pid="${CSS.escape(paragraphId)}"]`) as HTMLElement | null;
+      if (el) {
+        const flowEl = el.parentElement?.parentElement as HTMLElement;
+        if (flowEl) {
+          const pageWidth = (flowEl.parentElement as HTMLElement).clientWidth + 40;
+          const colIdx = Math.round(el.offsetLeft / pageWidth);
+          setPageIndex(Math.max(0, colIdx));
+        }
+      }
     } else {
       restorePidRef.current = paragraphId;
       saveProgress(book.id, targetChapterId, paragraphId, 0);
       setChapterId(targetChapterId);
+      setPageIndex(0);
     }
   };
 
@@ -213,8 +179,12 @@ export function ReaderView({ book }: { book: Book }) {
     setPendingPids([anchorPid]);
     window.getSelection()?.removeAllRanges();
 
+    let userPersona: UserPersona | undefined;
+    const activeId = getActiveUserPersonaId();
+    if (activeId) userPersona = getUserPersona(activeId);
+
     try {
-      const comments = await sendToPersonas(sentSelection.excerpt, chosen, settings);
+      const comments = await sendToPersonas(sentSelection.excerpt, chosen, settings, userPersona);
       const byPid = new Map<string, { personaId: string; text: string }[]>();
       for (const c of comments) {
         const para = sentSelection.excerpt[c.paragraphIndex];
@@ -271,52 +241,53 @@ export function ReaderView({ book }: { book: Book }) {
         title={book.title}
         onToc={() => setTocOpen(true)}
         onBookmarks={() => setBookmarksOpen(true)}
+        onComments={() => setCommentsOpen(true)}
         onSettings={() => setSettingsOpen(true)}
+        activeUserPersonaId={activeUserPersonaId}
       />
-      <div
-        id="reader-content"
-        ref={containerRef}
-        className="mx-auto w-full max-w-2xl flex-1 px-5 py-6"
-        style={{ fontSize: prefs.fontSize, lineHeight: prefs.lineSpacing, fontFamily: prefs.fontFamily }}
-      >
-        {!chapter ? (
-          <div className="space-y-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}</div>
-        ) : (
-          <>
-            <h2 className="mb-2 text-xl font-bold">{chapter.title}</h2>
-            {book.chapterCount > 1 && (
-              <div className="mb-6 flex items-center gap-2">
-                <Button variant="ghost" size="sm" className="h-7 px-2" disabled={chapterIndex <= 0} onClick={() => goChapter(-1)}>
-                  <ChevronLeft className="h-3 w-3" />
-                </Button>
-                <span className="text-xs text-muted-foreground">{chapterIndex + 1} of {book.chapterCount}</span>
-                <Button variant="ghost" size="sm" className="h-7 px-2" disabled={chapterIndex >= book.chapterCount - 1} onClick={() => goChapter(1)}>
-                  <ChevronRight className="h-3 w-3" />
-                </Button>
-              </div>
-            )}
-            {chapter.paragraphs.map((p) => (
-              <div key={p.id}>
-                <ParagraphBlock p={p} imageUrls={imageUrls} />
-                <CommentPopover
-                  threads={chapterThreads.filter((t) => t.paragraphId === p.id)}
-                  pending={pendingPids.includes(p.id)}
-                  personas={personas}
-                />
-              </div>
-            ))}
-            <div className="mt-10 flex items-center justify-between border-t pt-6">
-              <Button variant="outline" disabled={chapterIndex <= 0} onClick={() => goChapter(-1)}>
-                <ChevronLeft className="mr-1 h-4 w-4" />Previous
-              </Button>
-              <span className="text-xs text-muted-foreground">{chapterIndex + 1} / {book.chapterCount}</span>
-              <Button variant="outline" disabled={chapterIndex >= book.chapterCount - 1} onClick={() => goChapter(1)}>
-                Next<ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
+      {!chapter ? (
+        <div className="mx-auto w-full max-w-2xl flex-1 px-5 py-6 space-y-4">
+          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}
+        </div>
+      ) : (
+        <PaginatedChapter
+          chapter={chapter}
+          imageUrls={imageUrls}
+          prefs={prefs}
+          pageIndex={pageIndex}
+          pageCount={pageCount}
+          onPageCountChange={handlePageCount}
+          onFirstVisiblePidChange={handleFirstVisiblePid}
+          chapterThreads={chapterThreads}
+          pendingPids={pendingPids}
+          personas={personas}
+          registerSelectionContainer={() => {}}
+          onSelectionResolve={setSelection}
+          onToolbarPos={(pos) => setToolbarPos(pos && !sending ? pos : null)}
+          onSend={() => setPickerOpen(true)}
+          registerBackNav={() => {}}
+        />
+      )}
+      {/* Chapter footer nav uses page-flip */}
+      {book.chapterCount > 1 && (
+        <div className="mx-auto w-full max-w-2xl px-5 pb-4 flex items-center justify-between">
+          <Button variant="outline" disabled={chapterIndex <= 0 && pageIndex === 0} onClick={() => {
+            if (pageIndex === 0) goChapter(-1);
+            else goPage(-1);
+          }}>
+            <ChevronLeft className="mr-1 h-4 w-4" />Back
+          </Button>
+          <span className="text-xs" style={{ color: 'var(--reader-muted, #8A6038)' }}>
+            {pageIndex + 1} / {pageCount} · Ch {chapterIndex + 1}/{book.chapterCount}
+          </span>
+          <Button variant="outline" disabled={chapterIndex >= book.chapterCount - 1 && pageIndex >= pageCount - 1} onClick={() => {
+            if (pageIndex >= pageCount - 1) goChapter(1);
+            else goPage(1);
+          }}>
+            Next<ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
+        </div>
+      )}
       <TocDrawer open={tocOpen} onOpenChange={setTocOpen} toc={book.toc} currentChapterId={chapterId} onSelect={(cid) => { window.scrollTo({ top: 0 }); setChapterId(cid); }} />
       <BookmarksPanel
         open={bookmarksOpen} onOpenChange={setBookmarksOpen} bookId={book.id}

@@ -1,16 +1,18 @@
 'use client';
 import Link from 'next/link';
-import { ChevronLeft, List, Bookmark, Type } from 'lucide-react';
+import { ChevronLeft, List, Bookmark, Type, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ReaderTopbarProps {
   title: string;
   onToc: () => void;
   onBookmarks: () => void;
+  onComments: () => void;
   onSettings: () => void;
+  activeUserPersonaId: string | null;
 }
 
-export function ReaderTopbar({ title, onToc, onBookmarks, onSettings }: ReaderTopbarProps) {
+export function ReaderTopbar({ title, onToc, onBookmarks, onComments, onSettings, activeUserPersonaId }: ReaderTopbarProps) {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
       <div className="mx-auto flex h-12 max-w-2xl items-center justify-between px-2">
@@ -19,6 +21,9 @@ export function ReaderTopbar({ title, onToc, onBookmarks, onSettings }: ReaderTo
         </Button>
         <p className="mx-2 flex-1 truncate text-center text-sm font-medium">{title}</p>
         <div className="flex items-center">
+          <Button variant="ghost" size="icon" onClick={onComments} aria-label="Comments">
+            <MessageSquare className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" onClick={onBookmarks} aria-label="Bookmarks">
             <Bookmark className="h-4 w-4" />
           </Button>
