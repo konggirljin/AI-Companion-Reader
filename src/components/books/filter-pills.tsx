@@ -1,6 +1,5 @@
 'use client';
 import { BookMarked, Heart, Bookmark, Check } from 'lucide-react';
-import { comingSoon } from '@/lib/coming-soon';
 
 export type FilterId = 'all' | 'favorites' | 'toread' | 'finished';
 
@@ -21,7 +20,7 @@ export function FilterPills({ value, onChange }: { value: FilterId; onChange: (i
           <button
             key={p.id}
             type="button"
-            onClick={() => (p.id === 'all' ? onChange('all') : comingSoon(p.label))}
+            onClick={() => onChange(p.id)}
             className="flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full font-semibold transition-colors"
             style={{
               padding: '6px 14px',

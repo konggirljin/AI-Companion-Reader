@@ -11,7 +11,16 @@ import { VaseDecoration } from '@/components/books/motifs';
 export default function HomePage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [filter, setFilter] = useState<FilterId>('all');
-  const refresh = useCallback(() => setBooks(listBooks()), []);
+  const refresh = useCallback(() => {
+    setBooks(
+      listBooks().filter((b) => {
+        if (filter === 'favorites') return b.status === 'favorites';
+        if (filter === 'toread') return b.status === 'toRead';
+        if (filter === 'finished') return b.status === 'finished';
+        return true;
+      }),
+    );
+  }, [filter]);
   useEffect(refresh, [refresh]);
 
   return (

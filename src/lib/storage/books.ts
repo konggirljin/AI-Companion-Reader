@@ -56,3 +56,7 @@ export function reorderBooks(orderedIds: string[]): void {
 export function saveProgress(bookId: string, chapterId: string, paragraphId: string, pageIndex: number): void {
   writeBooks(listBooks().map((b) => (b.id === bookId ? { ...b, progress: { chapterId, paragraphId, pageIndex } } : b)));
 }
+
+export function updateBookStatus(bookId: string, status: Book['status']): void {
+  writeBooks(listBooks().map((b) => (b.id === bookId ? { ...b, status } : b)));
+}

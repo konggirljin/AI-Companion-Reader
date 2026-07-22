@@ -29,6 +29,7 @@ export interface Book {
   addedAt: number;
   order: number;
   chapterCount: number;
+  status?: 'favorites' | 'toRead' | 'finished';
   progress?: { chapterId: string; paragraphId: string; pageIndex: number };
 }
 

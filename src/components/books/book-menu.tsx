@@ -1,17 +1,17 @@
 'use client';
 import { useState } from 'react';
-import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, Heart, Bookmark, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import type { Book } from '@/lib/types';
-import { deleteBook, renameBook } from '@/lib/storage/books';
+import { deleteBook, renameBook, updateBookStatus } from '@/lib/storage/books';
 
 export function BookMenu({ book, onChanged }: { book: Book; onChanged: () => void }) {
   const [renaming, setRenaming] = useState(false);
@@ -43,6 +43,16 @@ export function BookMenu({ book, onChanged }: { book: Book; onChanged: () => voi
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => { updateBookStatus(book.id, book.status === 'favorites' ? undefined : 'favorites'); onChanged(); }}>
+            <Heart className="mr-2 h-4 w-4" />{book.status === 'favorites' ? 'Unfavorite' : 'Favorite'}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => { updateBookStatus(book.id, book.status === 'toRead' ? undefined : 'toRead'); onChanged(); }}>
+            <Bookmark className="mr-2 h-4 w-4" />{book.status === 'toRead' ? 'Remove from To Read' : 'Mark as To Read'}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => { updateBookStatus(book.id, book.status === 'finished' ? undefined : 'finished'); onChanged(); }}>
+            <Check className="mr-2 h-4 w-4" />{book.status === 'finished' ? 'Unmark finished' : 'Mark as Finished'}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => { setTitle(book.title); setRenaming(true); }}>
             <Pencil className="mr-2 h-4 w-4" />Rename
           </DropdownMenuItem>
