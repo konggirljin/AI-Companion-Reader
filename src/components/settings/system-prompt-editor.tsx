@@ -13,7 +13,7 @@ export function SystemPromptEditor() {
 
   const save = () => {
     if (!template.includes('{{personas}}')) {
-      toast.error('Template must contain {{personas}} — that is where companion profiles are inserted');
+      toast.error('Template must contain {{personas}}. That is where companion profiles are inserted.');
       return;
     }
     saveSettings({ ...getSettings(), systemPromptTemplate: template });
