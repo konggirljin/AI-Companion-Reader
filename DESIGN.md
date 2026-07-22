@@ -6,27 +6,41 @@
 - **Styling:** Tailwind CSS
 - **Components:** shadcn/ui (new-york style)
 - **Icons:** Lucide React
-- **Fonts:** Geist (sans) + Geist Mono (mono)
-- **Dark mode:** next-themes (class-based)
+- **Fonts:** Nunito (400-800, via next/font/google)
+- **Dark mode:** Dark only (locked, no theme toggle)
 - **Utilities:** `cn()` from `@/lib/utils`
 
 ---
 
 ## Colors
 
-### Primary Palette
+### Palette (dark only, locked)
 
-| Token | Light | Dark | Usage |
-|---|---|---|---|
-| `background` | `oklch(1 0 0)` | `oklch(0.141 0.005 285.823)` | Page background |
-| `foreground` | `oklch(0.141 0.005 285.823)` | `oklch(0.985 0 0)` | Primary text |
-| `primary` | `oklch(0.21 0.034 270)` | `oklch(0.92 0.02 270)` | Buttons, links, accents |
-| `primary-foreground` | `oklch(0.985 0 0)` | `oklch(0.21 0.006 285.885)` | Text on primary |
-| `secondary` | `oklch(0.967 0.001 286.375)` | `oklch(0.274 0.006 286.033)` | Secondary buttons |
-| `muted` | `oklch(0.967 0.001 286.375)` | `oklch(0.274 0.006 286.033)` | Subdued backgrounds |
-| `accent` | `oklch(0.96 0.012 270)` | `oklch(0.28 0.018 270)` | Hover backgrounds |
-| `destructive` | `oklch(0.577 0.245 27.325)` | `oklch(0.704 0.191 22.216)` | Error states |
-| `border` | `oklch(0.92 0.004 286.32)` | `oklch(1 0 0 / 10%)` | Borders |
+| Token | HEX | Usage |
+|---|---|---|
+| `background` | `#1C0F07` | App shell, shelf wall |
+| `foreground` | `#F0DCC0` | Cream primary text |
+| `card` | `#26180A` | Elevated dark wood surfaces |
+| `card-foreground` | `#F0DCC0` | Text on card |
+| `primary` | `#C89060` | Amber accent (icons, links, focus) |
+| `primary-foreground` | `#1C0F07` | Text on amber |
+| `secondary` | `#3D2010` | Active nav pill bg |
+| `secondary-foreground` | `#E8B870` | Active nav icon/label |
+| `muted` | `#3D2010` | Subdued surfaces |
+| `muted-foreground` | `#8A6038` | Muted caramel secondary text |
+| `accent` | `#9A6535` | Active filter pill bg |
+| `accent-foreground` | `#F5ECD8` | Active filter pill text |
+| `destructive` | warm red | Error states |
+| `border` | warm 28/35/20 | Borders, inputs |
+| `ring` | `#C89060` | Focus ring |
+
+**Shelf plank gradient:**
+```
+linear-gradient(to bottom, #9A5A28 0%, #7A4020 35%, #8C5028 65%, #632E14 100%)
+```
+
+**Shelf wall:** `#1C0F07` with faint vertical texture stripes.
+**Outer desktop canvas:** `#0A0603`.
 
 ---
 
@@ -36,8 +50,7 @@
 
 | Token | Font | Usage |
 |---|---|---|
-| `--font-geist-sans` | Geist | All UI text |
-| `--font-geist-mono` | Geist Mono | Code, monospace |
+| `--font-nunito` | Nunito (400-800) | All UI text |
 
 ### Type Scale
 
@@ -155,10 +168,9 @@ Use via: `animate-fade-in`, `animate-fade-up`, `animate-scale-in`
 ### Root Structure
 
 ```
-<body class="antialiased min-h-screen flex flex-col">
-  <Header />
+<body class="antialiased min-h-[100dvh] flex flex-col bg-background">
   <main class="flex-1">{children}</main>
-  <Footer />
+  <BottomNav />   (hidden on /read)
 </body>
 ```
 
@@ -274,9 +286,8 @@ hover:shadow-md hover:-translate-y-0.5
 
 ## Dark Mode
 
-- **Method:** Class-based via `next-themes`
-- **Default:** System preference
-- **Toggle:** 3-way dropdown — Light / Dark / System
+- Dark only. No light mode, no system toggle.
+- The warm palette is the single `:root` token set in globals.css.
 
 ---
 
