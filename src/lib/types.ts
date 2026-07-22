@@ -75,6 +75,15 @@ export interface UserPersona {
   createdAt: number;
 }
 
+export interface ApiProfile {
+  id: string;
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  createdAt: number;
+}
+
 export interface NumberedParagraph { index: number; pid: string; text: string }
 
 export interface AIComment { personaId: string; paragraphIndex: number; text: string }
