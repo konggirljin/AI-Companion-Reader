@@ -16,9 +16,15 @@ function EditInner() {
   if (persona === undefined) return <Skeleton className="mx-auto h-96 max-w-lg" />;
   if (persona === null) { router.replace('/persona'); return null; }
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="mb-6 text-center text-2xl font-bold">Edit companion</h1>
-      <PersonaForm persona={persona} />
+    <div className="mx-auto flex w-full max-w-[640px] flex-1 flex-col">
+      <header className="px-4 pb-4 pt-6">
+        <h1 className="text-[22px] font-extrabold leading-none" style={{ color: 'hsl(var(--foreground))' }}>
+          Edit companion
+        </h1>
+      </header>
+      <div className="flex-1 overflow-y-auto px-4 pb-24" style={{ scrollbarWidth: 'none' }}>
+        <PersonaForm persona={persona} />
+      </div>
     </div>
   );
 }
