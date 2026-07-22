@@ -29,7 +29,7 @@ export interface Book {
   addedAt: number;
   order: number;
   chapterCount: number;
-  progress?: { chapterId: string; paragraphId: string };
+  progress?: { chapterId: string; paragraphId: string; pageIndex: number };
 }
 
 export interface Persona {
@@ -60,9 +60,19 @@ export interface Settings {
   apiKey: string;
   model: string;
   systemPromptTemplate: string; // contains {{personas}}
+  proxyUrl: string;             // optional CORS proxy base URL (empty = direct)
 }
 
-export interface ReaderPrefs { fontSize: number; fontFamily: string; lineSpacing: number }
+export type ReaderTheme = 'amber' | 'warmWhite';
+
+export interface ReaderPrefs { fontSize: number; fontFamily: string; lineSpacing: number; theme: ReaderTheme }
+
+export interface UserPersona {
+  id: string;
+  name: string;
+  personality: string;
+  createdAt: number;
+}
 
 export interface NumberedParagraph { index: number; pid: string; text: string }
 

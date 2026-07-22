@@ -106,7 +106,7 @@ export function ReaderView({ book }: { book: Book }) {
         const blocks = document.querySelectorAll('[data-pid]');
         for (const el of Array.from(blocks)) {
           if (el.getBoundingClientRect().top >= 0) {
-            saveProgress(book.id, chapterId, el.getAttribute('data-pid')!);
+            saveProgress(book.id, chapterId, el.getAttribute('data-pid')!, 0);
             break;
           }
         }
@@ -189,7 +189,7 @@ export function ReaderView({ book }: { book: Book }) {
       document.querySelector(`[data-pid="${CSS.escape(paragraphId)}"]`)?.scrollIntoView({ block: 'start' });
     } else {
       restorePidRef.current = paragraphId;
-      saveProgress(book.id, targetChapterId, paragraphId);
+      saveProgress(book.id, targetChapterId, paragraphId, 0);
       setChapterId(targetChapterId);
     }
   };
@@ -243,8 +243,10 @@ export function ReaderView({ book }: { book: Book }) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
       const friendly =
-        msg === 'TIMEOUT' ? 'Request timed out'
+        msg === 'CORS_NETWORK_ERROR' ? 'Connection blocked — the API may not support browser requests (CORS)'
+        : msg === 'TIMEOUT' ? 'Request timed out'
         : msg.startsWith('API_ERROR_429') ? 'Rate limited — wait a moment'
+        : msg === 'API_ERROR_503' ? 'Service unavailable (503) — the API is temporarily down'
         : msg.startsWith('API_ERROR_') ? `Provider error (${msg.replace('API_ERROR_', '')})`
         : msg === 'NO_JSON' || msg === 'BAD_SHAPE' ? 'Your companion got distracted'
         : 'Network error — check your connection';
@@ -281,7 +283,18 @@ export function ReaderView({ book }: { book: Book }) {
           <div className="space-y-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}</div>
         ) : (
           <>
-            <h2 className="mb-6 text-xl font-bold">{chapter.title}</h2>
+            <h2 className="mb-2 text-xl font-bold">{chapter.title}</h2>
+            {book.chapterCount > 1 && (
+              <div className="mb-6 flex items-center gap-2">
+                <Button variant="ghost" size="sm" className="h-7 px-2" disabled={chapterIndex <= 0} onClick={() => goChapter(-1)}>
+                  <ChevronLeft className="h-3 w-3" />
+                </Button>
+                <span className="text-xs text-muted-foreground">{chapterIndex + 1} of {book.chapterCount}</span>
+                <Button variant="ghost" size="sm" className="h-7 px-2" disabled={chapterIndex >= book.chapterCount - 1} onClick={() => goChapter(1)}>
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
             {chapter.paragraphs.map((p) => (
               <div key={p.id}>
                 <ParagraphBlock p={p} imageUrls={imageUrls} />

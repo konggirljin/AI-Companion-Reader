@@ -5,4 +5,6 @@ export const K = {
   bookmarks: 'arc:bookmarks',
   settings: 'arc:settings',
   prefs: 'arc:prefs',
+  userPersonas: 'arc:userPersonas',
+  activeUserPersona: 'arc:activeUserPersona',
 } as const;

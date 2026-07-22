@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { readJson, writeJson, removeKey } from '@/lib/storage/local';
 import { listBooks, createBook, renameBook, reorderBooks, saveProgress, getBook } from '@/lib/storage/books';
 import { savePersona, listPersonas, deletePersona } from '@/lib/storage/personas';
+import {
+  listUserPersonas, getUserPersona, saveUserPersona, deleteUserPersona,
+  getActiveUserPersonaId, setActiveUserPersonaId,
+} from '@/lib/storage/user-personas';
 import { addThreads, listThreads, deleteThreadsForBook } from '@/lib/storage/threads';
 import { addBookmark, listBookmarks } from '@/lib/storage/bookmarks';
 import { getSettings, saveSettings, getPrefs, savePrefs, DEFAULT_SETTINGS, DEFAULT_PREFS } from '@/lib/storage/settings';
@@ -40,8 +44,8 @@ describe('books.ts', () => {
     createBook({ id: 'b2', title: 'B', author: '', format: 'txt', toc: [], coverRef: undefined, chapterCount: 1, progress: undefined });
     reorderBooks(['b2', 'b1']);
     expect(listBooks().map((x) => x.id)).toEqual(['b2', 'b1']);
-    saveProgress('b1', '3', '3:12');
-    expect(getBook('b1')!.progress).toEqual({ chapterId: '3', paragraphId: '3:12' });
+    saveProgress('b1', '3', '3:12', 5);
+    expect(getBook('b1')!.progress).toEqual({ chapterId: '3', paragraphId: '3:12', pageIndex: 5 });
   });
 });
 
@@ -84,10 +88,39 @@ describe('bookmarks.ts + settings.ts', () => {
   });
   it('settings/prefs defaults and persistence', () => {
     expect(getSettings()).toEqual(DEFAULT_SETTINGS);
-    saveSettings({ baseUrl: 'https://api.example.com/v1', apiKey: 'k', model: 'm', systemPromptTemplate: 'tpl {{personas}}' });
+    saveSettings({ baseUrl: 'https://api.example.com/v1', apiKey: 'k', model: 'm', systemPromptTemplate: 'tpl {{personas}}', proxyUrl: '' });
     expect(getSettings().model).toBe('m');
     expect(getPrefs()).toEqual(DEFAULT_PREFS);
-    savePrefs({ fontSize: 20, fontFamily: 'serif', lineSpacing: 2.0 });
+    savePrefs({ fontSize: 20, fontFamily: 'serif', lineSpacing: 2.0, theme: 'amber' });
     expect(getPrefs().fontSize).toBe(20);
+  });
+});
+
+describe('user-personas.ts', () => {
+  it('creates, updates, deletes personas and manages active id', () => {
+    const p = saveUserPersona({ name: 'Alice', personality: 'Curious reader who loves mysteries.' });
+    expect(listUserPersonas()).toHaveLength(1);
+    saveUserPersona({ ...p, name: 'Alicia' });
+    expect(listUserPersonas()[0].name).toBe('Alicia');
+    expect(listUserPersonas()).toHaveLength(1);
+
+    setActiveUserPersonaId(p.id);
+    expect(getActiveUserPersonaId()).toBe(p.id);
+    deleteUserPersona(p.id);
+    expect(listUserPersonas()).toHaveLength(0);
+    expect(getActiveUserPersonaId()).toBeNull();
+  });
+
+  it('getUserPersona returns undefined for missing id', () => {
+    expect(getUserPersona('nope')).toBeUndefined();
+  });
+});
+
+describe('settings.ts theme backward-compat', () => {
+  it('getPrefs fills in theme default when saved prefs lack it', () => {
+    localStorage.setItem('arc:prefs', JSON.stringify({ fontSize: 20, fontFamily: 'serif', lineSpacing: 2.0 }));
+    const prefs = getPrefs();
+    expect(prefs.theme).toBe('amber');
+    expect(prefs.fontSize).toBe(20);
   });
 });

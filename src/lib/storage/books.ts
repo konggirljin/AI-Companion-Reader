@@ -53,6 +53,6 @@ export function reorderBooks(orderedIds: string[]): void {
   );
 }
 
-export function saveProgress(bookId: string, chapterId: string, paragraphId: string): void {
-  writeBooks(listBooks().map((b) => (b.id === bookId ? { ...b, progress: { chapterId, paragraphId } } : b)));
+export function saveProgress(bookId: string, chapterId: string, paragraphId: string, pageIndex: number): void {
+  writeBooks(listBooks().map((b) => (b.id === bookId ? { ...b, progress: { chapterId, paragraphId, pageIndex } } : b)));
 }
