@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { extractJson, sendToPersonas } from '@/lib/ai';
-import type { NumberedParagraph, Persona, Settings } from '@/lib/types';
+import type { NumberedParagraph, Persona, Settings, UserPersona } from '@/lib/types';
 
-const settings: Settings = { baseUrl: 'https://api.test/v1', apiKey: 'k', model: 'm', systemPromptTemplate: 'P: {{personas}}' };
+const settings: Settings = { baseUrl: 'https://api.test/v1', apiKey: 'k', model: 'm', systemPromptTemplate: 'P: {{personas}}', proxyUrl: '' };
 const persona: Persona = { id: 'p1', name: 'Holmes', avatar: '', characterDescription: 'witty', language: 'English', createdAt: 0 };
 const excerpt: NumberedParagraph[] = [{ index: 0, pid: '0:0', text: 'Hello.' }];
 
@@ -75,5 +75,24 @@ describe('sendToPersonas', () => {
   it('throws on persistent non-OK status', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(apiResponse('nope', 500)));
     await expect(sendToPersonas(excerpt, [persona], settings)).rejects.toThrow('API_ERROR_500');
+  });
+
+  it('routes through proxy when proxyUrl is set', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(apiResponse('{"comments":[]}'));
+    vi.stubGlobal('fetch', fetchMock);
+    const proxiedSettings = { ...settings, proxyUrl: 'http://localhost:8787' };
+    await sendToPersonas(excerpt, [persona], proxiedSettings);
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toBe('http://localhost:8787?url=https%3A%2F%2Fapi.test%2Fv1%2Fchat%2Fcompletions');
+  });
+
+  it('passes user persona context into the system message when provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(apiResponse('{"comments":[]}'));
+    vi.stubGlobal('fetch', fetchMock);
+    const user: UserPersona = { id: 'u1', name: 'Alice', personality: 'Curious reader.', createdAt: 0 };
+    await sendToPersonas(excerpt, [persona], settings, user);
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.messages[0].content).toContain('The reader you are conversing with');
+    expect(body.messages[0].content).toContain('Alice');
   });
 });

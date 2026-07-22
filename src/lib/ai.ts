@@ -1,4 +1,4 @@
-import type { AIComment, NumberedParagraph, Persona, Settings } from './types';
+import type { AIComment, NumberedParagraph, Persona, Settings, UserPersona } from './types';
 import { renderSystemPrompt } from './prompts';
 
 const TIMEOUT_MS = 60_000;
@@ -7,7 +7,11 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 interface ChatMessage { role: string; content: string }
 
 export async function callChat(settings: Settings, messages: ChatMessage[]): Promise<string> {
-  const url = `${settings.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+  const targetUrl = `${settings.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+  // When a CORS proxy is configured, route the request through it.
+  // Query-param style: <proxyUrl>?url=<absolute-target-url>
+  const proxyBase = settings.proxyUrl?.trim().replace(/\/+$/, '');
+  const url = proxyBase ? `${proxyBase}?url=${encodeURIComponent(targetUrl)}` : targetUrl;
   let lastError: Error = new Error('NETWORK_ERROR');
   for (let attempt = 0; attempt < 3; attempt++) {
     const controller = new AbortController();
@@ -32,6 +36,8 @@ export async function callChat(settings: Settings, messages: ChatMessage[]): Pro
       const e = err instanceof Error ? err : new Error('NETWORK_ERROR');
       if (e.name === 'AbortError') throw new Error('TIMEOUT');
       if (e.message.startsWith('API_ERROR_') || e.message === 'API_BAD_RESPONSE') throw e;
+      // TypeErrors (e.g. "Failed to fetch") are typically CORS blocks or network unreachable
+      if (e.name === 'TypeError') throw new Error('CORS_NETWORK_ERROR');
       lastError = e; // network failure — loop retries
     } finally {
       clearTimeout(timer);
@@ -66,8 +72,9 @@ export async function sendToPersonas(
   excerpt: NumberedParagraph[],
   personas: Persona[],
   settings: Settings,
+  userPersona?: UserPersona,
 ): Promise<AIComment[]> {
-  const system = renderSystemPrompt(settings.systemPromptTemplate, personas);
+  const system = renderSystemPrompt(settings.systemPromptTemplate, personas, userPersona);
   const passage = excerpt.map((p) => `[${p.index}] ${p.text}`).join('\n\n');
   const messages: ChatMessage[] = [
     { role: 'system', content: system },
