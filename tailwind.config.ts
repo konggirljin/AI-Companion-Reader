@@ -9,10 +9,10 @@ const config: Config = {
   ],
   theme: {
   	extend: {
-  		fontFamily: {
-  			sans: ['var(--font-geist-sans)', 'sans-serif'],
-  			mono: ['var(--font-geist-mono)', 'monospace'],
-  		},
+   		fontFamily: {
+   			sans: ['var(--font-nunito)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+   			mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+   		},
   		backgroundImage: {
   			'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
   			'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))'
