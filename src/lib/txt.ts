@@ -30,7 +30,13 @@ export async function parseTxt(data: ArrayBuffer, filename: string): Promise<Par
   if (!hasHeadings) {
     if (!lines.length) lines.push('(empty file)');
     for (let i = 0; i < lines.length; i += PARAGRAPHS_PER_PART) {
-      chapters.push(makeChapter(String(chapters.length), `Part ${chapters.length + 1}`, lines.slice(i, i + PARAGRAPHS_PER_PART)));
+      const partLines = lines.slice(i, i + PARAGRAPHS_PER_PART);
+      const start = i + 1;
+      const end = i + partLines.length;
+      const title = partLines.length <= PARAGRAPHS_PER_PART && chapters.length === 0 && lines.length <= PARAGRAPHS_PER_PART
+        ? 'Full text'
+        : `Part ${chapters.length + 1} (lines ${start}–${end})`;
+      chapters.push(makeChapter(String(chapters.length), title, partLines));
     }
   } else {
     let currentTitle = '';

@@ -6,14 +6,12 @@
     "general": {
       "description": "Implements plan tasks, runs tests, fixes code per plan instructions",
       "mode": "subagent",
-      "model": "opencode-go/mimo-v2.5"
-      "task": true
+      "model": "opencode-go/deepseek-v4-flash"
     },
     "explore": {
       "description": "Explores codebase — file search, read, grep. No edits",
       "mode": "subagent",
-      "model": "opencode-go/mimo-v2.5"
-       "task": true
+      "model": "opencode-go/deepseek-v4-flash"
     },
     "plan": {
       "mode": "primary",

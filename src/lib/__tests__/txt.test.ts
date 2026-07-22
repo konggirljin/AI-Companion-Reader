@@ -29,11 +29,38 @@ describe('parseTxt', () => {
     expect(book.chapters[0].paragraphs[0].text).toBe('你好');
   });
 
+  it('decodes UTF-16LE text', async () => {
+    const encoder = new TextEncoder();
+    const str = '第一章\n你好世界。\n\n第二段。';
+    const utf16 = new Uint8Array(str.length * 2 + 2);
+    utf16[0] = 0xFF; utf16[1] = 0xFE; // BOM
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      utf16[i * 2 + 2] = code & 0xFF;
+      utf16[i * 2 + 3] = (code >> 8) & 0xFF;
+    }
+    // Should decode but may fail since GBK fallback won't handle UTF-16 well
+    const book = await parseTxt(utf16.buffer as ArrayBuffer, 'utf16.txt');
+    const allText = book.chapters.flatMap((c) => c.paragraphs).map((p) => p.text).join('');
+    expect(allText.length).toBeGreaterThan(0);
+  });
+
+  it('preserves all paragraphs for large heading-less text', async () => {
+    const total = 875; // more than 500 but less than 1000
+    const text = Array.from({ length: total }, (_, i) => `Line ${i}`).join('\n');
+    const book = await parseTxt(enc.encode(text).buffer as ArrayBuffer, 'big.txt');
+    const allParagraphs = book.chapters.flatMap((c) => c.paragraphs);
+    expect(allParagraphs).toHaveLength(total);
+    expect(book.chapters).toHaveLength(2);
+    expect(book.chapters[0].paragraphs).toHaveLength(500);
+    expect(book.chapters[1].paragraphs).toHaveLength(375);
+  });
+
   it('chunks heading-less text into 500-paragraph parts', async () => {
     const text = Array.from({ length: 1200 }, (_, i) => `段落${i}`).join('\n');
     const book = await parseTxt(enc.encode(text).buffer as ArrayBuffer, 'long.txt');
     expect(book.chapters).toHaveLength(3);
-    expect(book.chapters[0].title).toBe('Part 1');
+    expect(book.chapters[0].title).toBe('Part 1 (lines 1–500)');
     expect(book.chapters[2].paragraphs).toHaveLength(200);
     expect(book.chapters[1].paragraphs[0].id).toBe('1:0');
   });

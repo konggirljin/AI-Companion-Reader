@@ -60,31 +60,46 @@ async function blobAt(zip: JSZip, path: string): Promise<Blob | undefined> {
 function extractParagraphs(body: Element, chapterIndex: number, chapterDir: string): Paragraph[] {
   const out: Paragraph[] = [];
   const tagOf = (el: Element) => el.tagName.toUpperCase();
+
+  const emitBlock = (el: Element) => {
+    const tag = tagOf(el);
+    const text = (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+    const images = Array.from(el.getElementsByTagName('img'))
+      .filter((img) => Boolean(img.getAttribute('src')))
+      .map((img) => ({
+        path: resolvePath(chapterDir, img.getAttribute('src')!),
+        alt: img.getAttribute('alt') ?? undefined,
+      }));
+    if (text || images.length) {
+      out.push({
+        id: `${chapterIndex}:${out.length}`,
+        text,
+        tag: tag.toLowerCase() as Paragraph['tag'],
+        ...(images.length ? { images } : {}),
+      });
+    }
+  };
+
   const walk = (el: Element) => {
     const tag = tagOf(el);
     if (STRIP_TAGS.has(tag)) return;
     if (BLOCK_TAGS.has(tag)) {
       const hasBlockChild = Array.from(el.children).some((c) => BLOCK_TAGS.has(tagOf(c)));
-      if (!hasBlockChild) {
-        const text = (el.textContent ?? '').replace(/\s+/g, ' ').trim();
-        const images = Array.from(el.getElementsByTagName('img'))
-          .filter((img) => Boolean(img.getAttribute('src')))
-          .map((img) => ({
-            path: resolvePath(chapterDir, img.getAttribute('src')!),
-            alt: img.getAttribute('alt') ?? undefined,
-          }));
-        if (text || images.length) {
-          out.push({
-            id: `${chapterIndex}:${out.length}`,
-            text,
-            tag: tag.toLowerCase() as Paragraph['tag'],
-            ...(images.length ? { images } : {}),
-          });
+      if (!hasBlockChild) { emitBlock(el); return; }
+      for (const child of Array.from(el.children)) walk(child);
+      return;
+    }
+    // Non-block container: walk childNodes so direct text nodes aren't lost
+    for (const child of Array.from(el.childNodes)) {
+      if (child.nodeType === 3) {
+        const text = (child.textContent ?? '').replace(/\s+/g, ' ').trim();
+        if (text) {
+          out.push({ id: `${chapterIndex}:${out.length}`, text, tag: 'p' });
         }
-        return;
+      } else if (child.nodeType === 1) {
+        walk(child as Element);
       }
     }
-    for (const child of Array.from(el.children)) walk(child);
   };
   walk(body);
   return out;

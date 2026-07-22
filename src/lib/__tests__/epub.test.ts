@@ -115,6 +115,42 @@ describe('parseEpub (EPUB3)', () => {
   });
 });
 
+async function buildEpubWithTextNodes(): Promise<ArrayBuffer> {
+  const zip = new JSZip();
+  zip.file('META-INF/container.xml', `<?xml version="1.0"?>
+    <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+      <rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles>
+    </container>`);
+  zip.file('OEBPS/content.opf', `<?xml version="1.0"?>
+    <package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+      <metadata><dc:title xmlns:dc="http://purl.org/dc/elements/1.1/">Text Node Book</dc:title></metadata>
+      <manifest>
+        <item id="ch1" href="ch1.xhtml" media-type="application/xhtml+xml"/>
+      </manifest>
+      <spine><itemref idref="ch1"/></spine>
+    </package>`);
+  zip.file('OEBPS/ch1.xhtml', `<?xml version="1.0"?>
+    <html xmlns="http://www.w3.org/1999/xhtml"><body>
+      <p>First proper paragraph.</p>
+      <div>Text directly inside a div.</div>
+      <section><div>Text inside a section div.</div></section>
+      <div><p>Paragraph inside div.</p><span>Inline span text.</span></div>
+    </body></html>`);
+  return zip.generateAsync({ type: 'arraybuffer' });
+}
+
+describe('extractParagraphs with text nodes', () => {
+  it('captures text nodes inside non-block containers (div, section)', async () => {
+    const book = await parseEpub(await buildEpubWithTextNodes());
+    expect(book.chapters).toHaveLength(1);
+    const texts = book.chapters[0].paragraphs.map((p) => p.text);
+    expect(texts).toContain('First proper paragraph.');
+    expect(texts).toContain('Text directly inside a div.');
+    expect(texts).toContain('Text inside a section div.');
+    expect(texts).toContain('Paragraph inside div.');
+  });
+});
+
 describe('parseEpub (EPUB2 NCX)', () => {
   it('reads toc.ncx when nav.xhtml is absent', async () => {
     const book = await parseEpub(await buildEpub2());
