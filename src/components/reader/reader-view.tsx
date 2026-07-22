@@ -18,6 +18,7 @@ import type { ResolvedSelection } from '@/lib/selection';
 import { ReaderTopbar } from './reader-topbar';
 import { TocDrawer } from './toc-drawer';
 import { BookmarksPanel } from './bookmarks-panel';
+import { CommentsDrawer } from './comments-drawer';
 import { ReaderSettings } from './reader-settings';
 import { SelectionToolbar } from './selection-toolbar';
 import { PersonaPicker } from './persona-picker';
@@ -291,6 +292,14 @@ export function ReaderView({ book }: { book: Book }) {
       <TocDrawer open={tocOpen} onOpenChange={setTocOpen} toc={book.toc} currentChapterId={chapterId} onSelect={(cid) => { window.scrollTo({ top: 0 }); setChapterId(cid); }} />
       <BookmarksPanel
         open={bookmarksOpen} onOpenChange={setBookmarksOpen} bookId={book.id}
+        tocTitles={new Map(book.toc.map((t) => [t.chapterId, t.title]))}
+        onJump={jumpTo}
+      />
+      <CommentsDrawer
+        open={commentsOpen}
+        onOpenChange={setCommentsOpen}
+        bookId={book.id}
+        personas={personas}
         tocTitles={new Map(book.toc.map((t) => [t.chapterId, t.title]))}
         onJump={jumpTo}
       />
