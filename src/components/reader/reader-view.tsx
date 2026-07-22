@@ -237,7 +237,7 @@ export function ReaderView({ book }: { book: Book }) {
   );
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
       <ReaderTopbar
         title={book.title}
         onToc={() => setTocOpen(true)}

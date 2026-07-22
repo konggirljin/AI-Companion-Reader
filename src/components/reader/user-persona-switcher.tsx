@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { UserCircle2, Check, Settings } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -16,7 +16,12 @@ interface UserPersonaSwitcherProps {
 
 export function UserPersonaSwitcher({ activeId, onActivate }: UserPersonaSwitcherProps) {
   const [open, setOpen] = useState(false);
-  const personas: UserPersona[] = listUserPersonas();
+  const [personas, setPersonas] = useState<UserPersona[]>([]);
+
+  useEffect(() => {
+    setPersonas(listUserPersonas());
+  }, [open]);
+
   const active = personas.find((p) => p.id === activeId);
 
   const trigger = active ? (

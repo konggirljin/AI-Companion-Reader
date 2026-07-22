@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, UserCircle2, Check } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,15 +15,21 @@ import {
 } from '@/lib/storage/user-personas';
 
 export function UserPersonaSection() {
-  const [version, setVersion] = useState(0);
+  const [personas, setPersonas] = useState<UserPersona[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<UserPersona | null>(null);
   const [name, setName] = useState('');
   const [personality, setPersonality] = useState('');
-  const personas = listUserPersonas();
-  const activeId = getActiveUserPersonaId();
-  void version;
-  const refresh = () => setVersion((v) => v + 1);
+
+  const refresh = () => {
+    setPersonas(listUserPersonas());
+    setActiveId(getActiveUserPersonaId());
+  };
+
+  useEffect(() => {
+    refresh();
+  }, []);
 
   const openNew = () => { setEditing(null); setName(''); setPersonality(''); setOpen(true); };
   const openEdit = (p: UserPersona) => { setEditing(p); setName(p.name); setPersonality(p.personality); setOpen(true); };
