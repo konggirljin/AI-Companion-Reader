@@ -4,7 +4,7 @@ https://reader-companion-pink.vercel.app/
 
 ## 簡介
 
-AI Reading Companion 是一個閱讀工具，讓你在瀏覽器上閱讀 EPUB 和 TXT 書籍時，可以與 由AI扮演的 角色一同討論書中內容。
+AI Reader Companion 是一個免費的閲讀器，讓你在瀏覽器或手機上上閱讀 EPUB 和 TXT 書籍時，可以與由AI扮演的 角色一同討論書中內容。AI 角色將會在文中穿插點評，模仿微信讀書點評或晉江文學城段評功能
 
 ### 功能一覽
 
