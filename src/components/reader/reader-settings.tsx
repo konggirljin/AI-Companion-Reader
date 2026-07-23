@@ -9,9 +9,9 @@ const FONT_OPTIONS = [
   { value: 'var(--font-geist-sans)', label: 'Geist Sans' },
   { value: 'Georgia, "Times New Roman", serif', label: 'Serif' },
   { value: 'var(--font-geist-mono)', label: 'Mono' },
-  { value: '"Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif', label: 'Chinese Sans' },
-  { value: '"Noto Serif SC", "STSong", "SimSun", serif', label: 'Chinese Serif' },
-  { value: '"KaiTi", "STKaiti", "Noto Serif SC", serif', label: 'Chinese Kai' },
+  { value: '"Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif', label: '黑體' },
+  { value: '"Noto Serif SC", "STSong", "SimSun", serif', label: '宋體' },
+  { value: '"KaiTi", "STKaiti", "Noto Serif SC", serif', label: '楷體' },
 ];
 
 interface ReaderSettingsProps {

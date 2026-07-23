@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { Book, ParsedChapter, Persona, ReaderPrefs, Thread } from '@/lib/types';
 import { idbGet, idbKeys } from '@/lib/storage/idb';
 import { saveProgress } from '@/lib/storage/books';
+import { seedDefaultPersonas } from '@/lib/storage/seed-personas';
 import { getPrefs, savePrefs } from '@/lib/storage/settings';
 import { addBookmark } from '@/lib/storage/bookmarks';
 import { listPersonas } from '@/lib/storage/personas';
@@ -49,10 +50,16 @@ export function ReaderView({ book }: { book: Book }) {
   const [sending, setSending] = useState(false);
   const [pendingPids, setPendingPids] = useState<string[]>([]);
   const [threadsVersion, setThreadsVersion] = useState(0);
-  const personas: Persona[] = useMemo(() => listPersonas(), []);
+  const [personas, setPersonas] = useState<Persona[]>([]);
   const [activeUserPersonaId, setActiveUserPersonaId] = useState<string | null>(() => getActiveUserPersonaId());
 
   const updatePrefs = (next: ReaderPrefs) => { setPrefs(next); savePrefs(next); };
+
+  // Seed + load personas
+  useEffect(() => {
+    if (listPersonas().length === 0) seedDefaultPersonas();
+    setPersonas(listPersonas());
+  }, []);
 
   // Load chapter from IndexedDB
   useEffect(() => {

@@ -158,11 +158,11 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       if (!container.contains(range.commonAncestorContainer)) { onToolbarPos(null); return; }
       const resolved = resolveSelection(range, container);
       if (!resolved) { onToolbarPos(null); return; }
-      if (countWords(resolved.text) > 2000) {
+      if (countWords(resolved.text) > 7000) {
         onToolbarPos(null); onSelectionResolve(null);
         if (!overLimitNotifiedRef.current) {
           overLimitNotifiedRef.current = true;
-          import('sonner').then(({ toast }) => toast.error('Select a shorter passage (max 2000 words)'));
+          import('sonner').then(({ toast }) => toast.error('Select a shorter passage (max 7000 words)'));
         }
         return;
       }
@@ -193,6 +193,18 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       ref={viewportRef}
       className="relative mx-auto w-full max-w-2xl flex-1 px-5 py-6 overflow-hidden"
       style={{ ...readerContentStyle(prefs.theme), fontSize: prefs.fontSize, lineHeight: prefs.lineSpacing, fontFamily: prefs.fontFamily }}
+      onClick={(e) => {
+        const vp = viewportRef.current;
+        if (!vp) return;
+        const rect = vp.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const w = rect.width;
+        if (x > w * 0.7) {
+          window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: 1 }));
+        } else if (x < w * 0.3) {
+          window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: -1 }));
+        }
+      }}
     >
       <h2 className="mb-2 text-xl font-bold">{chapter.title}</h2>
       <div

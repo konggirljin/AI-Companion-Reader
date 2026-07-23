@@ -16,7 +16,7 @@ export function SelectionToolbar({ position, onSend }: SelectionToolbarProps) {
     >
       <Button size="sm" className="shadow-lg" onMouseDown={(e) => e.preventDefault()} onClick={onSend}>
         <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-        Send to AI
+        Send to Companions
       </Button>
     </div>
   );
