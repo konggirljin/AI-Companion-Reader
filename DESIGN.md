@@ -315,6 +315,8 @@ Two palettes override CSS variables **only inside `#reader-content`**. The app s
 |---|---|---|---|
 | `amber` (default) | `#26180A` | `#F0DCC0` | `#8A6038` |
 | `warmWhite` | `#FAF4E8` | `#2A1F0E` | `#7A6448` |
+| `sepia` | `#F5E8C4` | `#3D2B1F` | `#8B7355` |
+| `green` | `#C8D8C8` | `#1E3A2E` | `#5A7A5E` |
 
 - Applied inline on the reader content container (`readerContentStyle(theme)` in `src/lib/reader-themes.ts`).
 - Stored in `ReaderPrefs.theme`. Default `amber` for backward continuity with the existing dark palette.

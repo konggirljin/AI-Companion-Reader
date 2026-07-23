@@ -64,7 +64,7 @@ export interface Settings {
   proxyUrl: string;             // optional CORS proxy base URL (empty = direct)
 }
 
-export type ReaderTheme = 'amber' | 'warmWhite';
+export type ReaderTheme = 'amber' | 'warmWhite' | 'sepia' | 'green';
 
 export interface ReaderPrefs { fontSize: number; fontFamily: string; lineSpacing: number; theme: ReaderTheme }
 
