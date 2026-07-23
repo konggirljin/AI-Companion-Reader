@@ -4,8 +4,9 @@ import { ChevronLeft, ChevronRight, BookmarkPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Book, ParsedChapter, Persona, ReaderPrefs, Thread } from '@/lib/types';
+import type { Book, NumberedParagraph, ParsedChapter, Persona, ReaderPrefs, Thread } from '@/lib/types';
 import { idbGet, idbKeys } from '@/lib/storage/idb';
 import { saveProgress } from '@/lib/storage/books';
 import { seedDefaultPersonas } from '@/lib/storage/seed-personas';
@@ -14,6 +15,7 @@ import { addBookmark } from '@/lib/storage/bookmarks';
 import { listPersonas } from '@/lib/storage/personas';
 import { getSettings } from '@/lib/storage/settings';
 import { addThreads, listThreads } from '@/lib/storage/threads';
+import { countWords } from '@/lib/word-count';
 import { sendToPersonas } from '@/lib/ai';
 import type { ResolvedSelection } from '@/lib/selection';
 import { ReaderTopbar } from './reader-topbar';
@@ -52,6 +54,9 @@ export function ReaderView({ book }: { book: Book }) {
   const [threadsVersion, setThreadsVersion] = useState(0);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [activeUserPersonaId, setActiveUserPersonaId] = useState<string | null>(() => getActiveUserPersonaId());
+  const [chapterExcerpt, setChapterExcerpt] = useState<NumberedParagraph[] | null>(null);
+  const [chapterContextOpen, setChapterContextOpen] = useState(false);
+  const [chapterContextWords, setChapterContextWords] = useState(0);
 
   const updatePrefs = (next: ReaderPrefs) => { setPrefs(next); savePrefs(next); };
 
@@ -149,6 +154,22 @@ export function ReaderView({ book }: { book: Book }) {
     toast.success('Bookmark added');
   };
 
+  const handleDoubleClickParagraph = useCallback((pid: string) => {
+    if (!chapter) return;
+    const idx = chapter.paragraphs.findIndex((p) => p.id === pid);
+    if (idx === -1) return;
+    const sliced = chapter.paragraphs.slice(0, idx + 1);
+    const excerpt: NumberedParagraph[] = sliced.map((p, i) => ({ index: i, pid: p.id, text: p.text }));
+    const words = excerpt.reduce((sum, p) => sum + countWords(p.text), 0);
+    if (words > 7000) {
+      toast.error(`Too long (${words} words, max 7000)`);
+      return;
+    }
+    setChapterExcerpt(excerpt);
+    setChapterContextWords(words);
+    setChapterContextOpen(true);
+  }, [chapter]);
+
   const jumpTo = (targetChapterId: string, paragraphId: string) => {
     if (targetChapterId === chapterId) {
       const el = document.querySelector(`[data-pid="${CSS.escape(paragraphId)}"]`) as HTMLElement | null;
@@ -181,8 +202,11 @@ export function ReaderView({ book }: { book: Book }) {
       return;
     }
     const chosen = personas.filter((p) => personaIds.includes(p.id));
-    const sentSelection = selection;
-    const anchorPid = sentSelection.pids[sentSelection.pids.length - 1];
+    const isChapterContext = chapterExcerpt !== null;
+    const useExcerpt = isChapterContext ? chapterExcerpt : selection?.excerpt;
+    const usePids = isChapterContext ? chapterExcerpt.map((p) => p.pid) : selection?.pids;
+    if (!useExcerpt) return;
+    const anchorPid = usePids[usePids.length - 1];
     setSending(true);
     setPendingPids([anchorPid]);
     window.getSelection()?.removeAllRanges();
@@ -192,10 +216,10 @@ export function ReaderView({ book }: { book: Book }) {
     if (activeId) userPersona = getUserPersona(activeId);
 
     try {
-      const comments = await sendToPersonas(sentSelection.excerpt, chosen, settings, userPersona);
+      const comments = await sendToPersonas(useExcerpt, chosen, settings, userPersona);
       const byPid = new Map<string, { personaId: string; text: string }[]>();
       for (const c of comments) {
-        const para = sentSelection.excerpt[c.paragraphIndex];
+        const para = useExcerpt[c.paragraphIndex];
         if (!para) continue;
         const arr = byPid.get(para.pid) ?? [];
         arr.push({ personaId: c.personaId, text: c.text });
@@ -206,7 +230,7 @@ export function ReaderView({ book }: { book: Book }) {
         bookId: book.id,
         chapterId,
         paragraphId: pid,
-        selectedText: sentSelection.text,
+        selectedText: isChapterContext ? useExcerpt.map((p) => p.text).join('\n\n') : selection!.text,
         comments: threadComments,
         createdAt: Date.now(),
       }));
@@ -234,6 +258,7 @@ export function ReaderView({ book }: { book: Book }) {
     } finally {
       setSending(false);
       setPendingPids([]);
+      setChapterExcerpt(null);
     }
   };
 
@@ -275,6 +300,7 @@ export function ReaderView({ book }: { book: Book }) {
           onToolbarPos={(pos) => setToolbarPos(pos && !sending ? pos : null)}
           onSend={() => setPickerOpen(true)}
           registerBackNav={() => {}}
+          onDoubleClickParagraph={handleDoubleClickParagraph}
         />
       )}
       {/* Chapter footer nav uses page-flip */}
@@ -320,7 +346,21 @@ export function ReaderView({ book }: { book: Book }) {
         <BookmarkPlus className="h-5 w-5" />
       </Button>
       <SelectionToolbar position={toolbarPos && !sending ? toolbarPos : null} onSend={() => setPickerOpen(true)} />
-      <PersonaPicker open={pickerOpen} onOpenChange={setPickerOpen} personas={personas} onConfirm={(ids) => void handleSend(ids)} />
+      <PersonaPicker open={pickerOpen && !chapterContextOpen} onOpenChange={setPickerOpen} personas={personas} onConfirm={(ids) => void handleSend(ids)} />
+      <Dialog open={chapterContextOpen} onOpenChange={setChapterContextOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Send to companions</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Send the chapter beginning to this point (~{chapterContextWords} words, max 7000) to your companions?
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setChapterContextOpen(false)}>Cancel</Button>
+            <Button onClick={() => { setChapterContextOpen(false); setPickerOpen(true); }}>Confirm</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -46,12 +46,13 @@ interface PaginatedChapterProps {
   onToolbarPos: (pos: { x: number; y: number } | null) => void;
   onSend: () => void;
   registerBackNav: (goDelta: (d: number) => void) => void;
+  onDoubleClickParagraph?: (paragraphId: string) => void;
 }
 
 export function PaginatedChapter(props: PaginatedChapterProps) {
   const { chapter, imageUrls, prefs, pageIndex, pageCount, onPageCountChange, onFirstVisiblePidChange,
     chapterThreads, pendingPids, personas, registerSelectionContainer, onSelectionResolve,
-    onToolbarPos, registerBackNav } = props;
+    onToolbarPos, registerBackNav, onDoubleClickParagraph } = props;
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const flowRef = useRef<HTMLDivElement>(null);
@@ -220,7 +221,7 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
         } as React.CSSProperties}
       >
         {chapter.paragraphs.map((p) => (
-          <div key={p.id} className="break-inside-avoid-column">
+          <div key={p.id} className="break-inside-avoid-column" onDoubleClick={() => onDoubleClickParagraph?.(p.id)}>
             <ParagraphBlock p={p} imageUrls={imageUrls} />
             <CommentPopover
               threads={chapterThreads.filter((t) => t.paragraphId === p.id)}
