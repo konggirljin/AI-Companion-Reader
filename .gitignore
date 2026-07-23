@@ -38,6 +38,7 @@ yarn-error.log*
 # development artifacts (not app code)
 /.agents/
 /.superpowers/
+/.opencode/
 /docs/
 /reference/
 /scripts/

@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# AI Reading Companion
 
-## Getting Started
+---
 
-First, run the development server:
+**繁體中文**
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 簡介
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+AI Reading Companion 是一個以 AI 驅動的閱讀工具，讓你在瀏覽器上閱讀 EPUB 和 TXT 書籍時，可以與 AI 角色一同討論書中內容。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 功能一覽
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+- **匯入書籍** — 支援 EPUB 和 TXT 格式
+- **翻頁閱讀** — 點擊左右兩側翻頁，支援鍵盤方向鍵與滑動手勢
+- **AI 同伴** — 選取段落即可向 AI 角色發送內容，獲得他們的評論和見解
+- **內建角色** — 預載郭靖、黃蓉、Sherlock Holmes、Tony Stark、Edward Cullen 等角色
+- **自訂角色** — 可自行建立閱讀同伴，設定名稱、個性與頭像
+- **閱讀主題** — Amber (深色)、暖白、Sepia、柔和綠，四種護眼主題
+- **中文字型** — 內建黑體、宋體、楷體，支援繁簡中文
+- **AI 提供者** — 支援任何 OpenAI 相容 API，可建立多組 API 設定檔快速切換
 
-## Learn More
+### 部署
 
-To learn more about Next.js, take a look at the following resources:
+部署到 Vercel 即可使用，無需伺服器。首次開啟會自動載入預設書籍《The Adventures of Sherlock Holmes》與預設角色。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+**English**
 
-## Deploy on Vercel
+## About
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+AI Reading Companion is an AI-powered reading tool that lets you read EPUB and TXT books in your browser while discussing the content with AI companions.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+### Features
+
+- **Import books** — EPUB and TXT format support
+- **Page flip** — Tap left/right to turn pages, with keyboard arrow and swipe support
+- **AI companions** — Select text and send it to AI characters for their comments and insights
+- **Pre-built characters** — Guo Jing, Huang Rong, Sherlock Holmes, Tony Stark, Edward Cullen
+- **Custom characters** — Create your own reading companions with custom names, personalities, and avatars
+- **Reading themes** — Amber (dark), warm white, sepia, and soft green — all easy on the eyes
+- **Chinese fonts** — Built-in support for Heiti, Songti, and Kaiti fonts
+- **AI provider** — Works with any OpenAI-compatible API; supports multiple API profiles for quick switching
+
+### Deployment
+
+Deploy to Vercel and use it instantly — no server needed. A default book (*The Adventures of Sherlock Holmes*) and default AI companions are pre-loaded on first visit.
