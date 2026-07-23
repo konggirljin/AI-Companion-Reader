@@ -22,7 +22,6 @@ import { ReaderTopbar } from './reader-topbar';
 import { TocDrawer } from './toc-drawer';
 import { BookmarksPanel } from './bookmarks-panel';
 import { CommentsDrawer } from './comments-drawer';
-import { ReaderSettings } from './reader-settings';
 import { SelectionToolbar } from './selection-toolbar';
 import { PersonaPicker } from './persona-picker';
 import { PaginatedChapter, PAGE_FLIP_EVENT } from './paginated-chapter';
@@ -41,7 +40,6 @@ export function ReaderView({ book }: { book: Book }) {
   const [prefs, setPrefs] = useState<ReaderPrefs>(() => getPrefs());
   const [tocOpen, setTocOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
 
   const [pageIndex, setPageIndex] = useState(restorePageRef.current);
@@ -57,6 +55,7 @@ export function ReaderView({ book }: { book: Book }) {
   const [chapterExcerpt, setChapterExcerpt] = useState<NumberedParagraph[] | null>(null);
   const [chapterContextOpen, setChapterContextOpen] = useState(false);
   const [chapterContextWords, setChapterContextWords] = useState(0);
+  const [chapterContextMode, setChapterContextMode] = useState<'chapter_start' | 'double_click'>('chapter_start');
 
   const updatePrefs = (next: ReaderPrefs) => { setPrefs(next); savePrefs(next); };
 
@@ -168,6 +167,8 @@ export function ReaderView({ book }: { book: Book }) {
     setChapterExcerpt(excerpt);
     setChapterContextWords(words);
     setChapterContextOpen(true);
+    setChapterContextMode('double_click');
+    window.getSelection()?.removeAllRanges();
   }, [chapter]);
 
   const handleSendChapterStart = useCallback(() => {
@@ -185,6 +186,7 @@ export function ReaderView({ book }: { book: Book }) {
     setChapterExcerpt(excerpt);
     setChapterContextWords(words);
     setChapterContextOpen(true);
+    setChapterContextMode('chapter_start');
   }, [chapter]);
 
   const jumpTo = (targetChapterId: string, paragraphId: string) => {
@@ -292,9 +294,10 @@ export function ReaderView({ book }: { book: Book }) {
         onToc={() => setTocOpen(true)}
         onBookmarks={() => setBookmarksOpen(true)}
         onComments={() => setCommentsOpen(true)}
-        onSettings={() => setSettingsOpen(true)}
         activeUserPersonaId={activeUserPersonaId}
         onUserPersonaActivate={(id) => setActiveUserPersonaId(id)}
+        prefs={prefs}
+        onChange={updatePrefs}
       />
       {!chapter ? (
         <div className="mx-auto w-full max-w-2xl flex-1 px-5 py-6 space-y-4">
@@ -355,7 +358,6 @@ export function ReaderView({ book }: { book: Book }) {
         tocTitles={new Map(book.toc.map((t) => [t.chapterId, t.title]))}
         onJump={jumpTo}
       />
-      <ReaderSettings open={settingsOpen} onOpenChange={setSettingsOpen} prefs={prefs} onChange={updatePrefs} />
       <Button
         variant="secondary" size="icon"
         className="fixed bottom-6 right-6 z-40 h-11 w-11 rounded-full shadow-lg"
@@ -371,7 +373,9 @@ export function ReaderView({ book }: { book: Book }) {
             <DialogTitle>Send to companions</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Share the chapter from the beginning to this point ({chapterContextWords} words, max 7000) with your companions?
+            {chapterContextMode === 'chapter_start'
+              ? `Share the entire chapter (${chapterContextWords} words, max 7000) with your companions?`
+              : `Share the chapter from the beginning to this point (${chapterContextWords} words, max 7000) with your companions?`}
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setChapterContextOpen(false)}>Cancel</Button>
