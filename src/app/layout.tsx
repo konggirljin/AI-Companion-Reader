@@ -15,6 +15,7 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: 'AI Reading Companion',
   description: 'Read together with AI companions',
+  icons: { icon: '/icon.svg' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

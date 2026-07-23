@@ -49,3 +49,12 @@ skills-lock.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Android build artifacts
+*.apk
+*.aab
+*.apk.idsig
+*.keystore
+.gradle/
+hs_err_pid*.log
+manifest-checksum.txt

@@ -1,0 +1,4 @@
+#Thu Jul 23 15:44:31 HKT 2026
+base.0=D\:\\AI Companion Reader\\app\\build\\intermediates\\dex\\release\\minifyReleaseWithR8\\classes.dex
+renamed.0=classes.dex
+path.0=classes.dex

@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.vercel.reader_companion_pink.twa",
+    "sha256_cert_fingerprints": ["B6:86:69:6E:5A:80:73:08:2E:5F:24:D0:D1:E2:A4:6B:53:6B:5F:0F:32:24:F5:53:CB:1E:6F:09:DB:CB:EE:AF"]
+  }
+}]
