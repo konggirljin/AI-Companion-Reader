@@ -35,6 +35,16 @@ yarn-error.log*
 # vercel
 .vercel
 
+# development artifacts (not app code)
+/.agents/
+/.superpowers/
+/docs/
+/reference/
+/scripts/
+AGENTS.md
+opencode.json
+skills-lock.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
