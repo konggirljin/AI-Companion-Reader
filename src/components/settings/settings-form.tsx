@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Plus, Trash2, Layers, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -121,35 +121,6 @@ export function SettingsForm() {
 
   return (
     <>
-      <div className="flex items-center gap-2 mb-3">
-        <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
-        <Select value={activeProfileId ?? ''} onValueChange={(v) => v && selectProfile(v)}>
-          <SelectTrigger className="h-8 text-sm">
-            <SelectValue placeholder="Default (no profile)" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">Default (no profile)</SelectItem>
-            {profiles.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button variant="ghost" size="sm" onClick={() => { setProfileName(''); setSaveDialogOpen(true); }}>
-          <Plus className="mr-1 h-4 w-4" />Save as profile
-        </Button>
-      </div>
-      {profiles.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {profiles.map((p) => (
-            <span key={p.id} className="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs">
-              {p.name}
-              <button onClick={() => removeProfile(p.id)} className="hover:text-destructive">
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
       <Card>
         <CardHeader>
           <CardTitle>AI Provider</CardTitle>
@@ -205,6 +176,39 @@ export function SettingsForm() {
               <li>Local dev: run <code className="rounded bg-muted px-1">npm run proxy</code> in separate terminal, set this to <code className="rounded bg-muted px-1">http://localhost:8787</code></li>
               <li>Vercel deploy: set this to <code className="rounded bg-muted px-1">/api/proxy</code> (built-in, no extra process)</li>
             </ul>
+          </div>
+          <div className="space-y-2 border-t pt-4">
+            <Label>API profiles</Label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <Select value={activeProfileId ?? ''} onValueChange={(v) => v && selectProfile(v)}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Default (no profile)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Default (no profile)</SelectItem>
+                    {profiles.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => { setProfileName(''); setSaveDialogOpen(true); }}>
+                <Plus className="mr-1 h-4 w-4" />Save
+              </Button>
+            </div>
+            {profiles.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {profiles.map((p) => (
+                  <span key={p.id} className="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs">
+                    {p.name}
+                    <button onClick={() => removeProfile(p.id)} className="hover:text-destructive">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <Button variant="outline" onClick={() => void testConnection()} disabled={testing || !settings.apiKey}>
             {testing ? 'Testing…' : 'Test connection'}
