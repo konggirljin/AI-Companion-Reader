@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Plus, Trash2, RefreshCw } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -128,7 +129,28 @@ export function SettingsForm() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>API profiles</Label>
+            <div className="flex items-center gap-1.5">
+              <Label>API profiles</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="flex h-4 w-4 items-center justify-center rounded-full border border-muted-foreground/40 text-xs leading-none text-muted-foreground hover:border-muted-foreground hover:text-foreground" aria-label="How to get an API key">?</button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 text-sm" align="start">
+                  <div className="space-y-2">
+                    <p className="font-medium">How to get a free API key?</p>
+                    <ol className="list-decimal pl-4 space-y-1.5 text-muted-foreground">
+                      <li>Go to <a href="https://build.nvidia.com/settings/api-keys" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">build.nvidia.com/settings/api-keys</a></li>
+                      <li>Create your NVIDIA account and generate an API key</li>
+                      <li>Copy your API key</li>
+                      <li>For Base URL, use: <code className="block rounded bg-muted px-1 py-0.5 mt-0.5">https://integrate.api.nvidia.com/v1</code></li>
+                      <li>Paste your API key in the API Key field</li>
+                      <li>Click the <RefreshCw className="inline h-3 w-3" /> button to fetch available models</li>
+                    </ol>
+                    <p className="text-xs text-muted-foreground pt-1">Recommended: <code className="rounded bg-muted px-1">deepseek-ai/deepseek-v4-flash</code> (fast) or <code className="rounded bg-muted px-1">deepseek-ai/deepseek-v4-pro</code> / <code className="rounded bg-muted px-1">z-ai/glm-5.2</code> (higher quality).</p>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <Select value={activeProfileId ?? ''} onValueChange={(v) => v && selectProfile(v)}>
