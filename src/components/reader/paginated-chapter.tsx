@@ -1,11 +1,13 @@
 'use client';
 import { useCallback, useEffect, useRef } from 'react';
+import { Send } from 'lucide-react';
 import type { ParsedChapter, Paragraph, Persona, ReaderPrefs, Thread } from '@/lib/types';
 import type { ResolvedSelection } from '@/lib/selection';
 import { readerContentStyle } from '@/lib/reader-themes';
 import { resolveSelection } from '@/lib/selection';
 import { countWords } from '@/lib/word-count';
 import { CommentPopover } from './comment-popover';
+import { Button } from '@/components/ui/button';
 
 export const PAGE_FLIP_EVENT = 'arc:page-flip';
 
@@ -47,12 +49,13 @@ interface PaginatedChapterProps {
   onSend: () => void;
   registerBackNav: (goDelta: (d: number) => void) => void;
   onDoubleClickParagraph?: (paragraphId: string) => void;
+  onSendChapterStart?: () => void;
 }
 
 export function PaginatedChapter(props: PaginatedChapterProps) {
   const { chapter, imageUrls, prefs, pageIndex, pageCount, onPageCountChange, onFirstVisiblePidChange,
     chapterThreads, pendingPids, personas, registerSelectionContainer, onSelectionResolve,
-    onToolbarPos, registerBackNav, onDoubleClickParagraph } = props;
+    onToolbarPos, registerBackNav, onDoubleClickParagraph, onSendChapterStart } = props;
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const flowRef = useRef<HTMLDivElement>(null);
@@ -195,6 +198,8 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       className="relative mx-auto w-full max-w-2xl flex-1 px-5 py-6 overflow-hidden"
       style={{ ...readerContentStyle(prefs.theme), fontSize: prefs.fontSize, lineHeight: prefs.lineSpacing, fontFamily: prefs.fontFamily }}
       onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('button') || target.closest('a') || target.tagName === 'BUTTON' || target.tagName === 'A') return;
         const vp = viewportRef.current;
         if (!vp) return;
         const rect = vp.getBoundingClientRect();
@@ -207,7 +212,14 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
         }
       }}
     >
-      <h2 className="mb-2 text-xl font-bold">{chapter.title}</h2>
+      <div className="mb-2 flex items-center gap-2">
+        <h2 className="text-xl font-bold">{chapter.title}</h2>
+        {onSendChapterStart && (
+          <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onSendChapterStart} aria-label="Send chapter to companions">
+            <Send className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
       <div
         ref={flowRef}
         style={{

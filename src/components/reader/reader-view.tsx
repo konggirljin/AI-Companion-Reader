@@ -62,7 +62,7 @@ export function ReaderView({ book }: { book: Book }) {
 
   // Seed + load personas
   useEffect(() => {
-    if (listPersonas().length === 0) seedDefaultPersonas();
+    seedDefaultPersonas();
     setPersonas(listPersonas());
   }, []);
 
@@ -165,6 +165,23 @@ export function ReaderView({ book }: { book: Book }) {
       toast.error(`Too long (${words} words, max 7000)`);
       return;
     }
+    setChapterExcerpt(excerpt);
+    setChapterContextWords(words);
+    setChapterContextOpen(true);
+  }, [chapter]);
+
+  const handleSendChapterStart = useCallback(() => {
+    if (!chapter) return;
+    let words = 0;
+    const excerpt: NumberedParagraph[] = [];
+    for (let i = 0; i < chapter.paragraphs.length; i++) {
+      const p = chapter.paragraphs[i];
+      const w = countWords(p.text);
+      if (words + w > 7000) break;
+      excerpt.push({ index: i, pid: p.id, text: p.text });
+      words += w;
+    }
+    if (excerpt.length === 0) return;
     setChapterExcerpt(excerpt);
     setChapterContextWords(words);
     setChapterContextOpen(true);
@@ -301,6 +318,7 @@ export function ReaderView({ book }: { book: Book }) {
           onSend={() => setPickerOpen(true)}
           registerBackNav={() => {}}
           onDoubleClickParagraph={handleDoubleClickParagraph}
+          onSendChapterStart={handleSendChapterStart}
         />
       )}
       {/* Chapter footer nav uses page-flip */}
@@ -353,7 +371,7 @@ export function ReaderView({ book }: { book: Book }) {
             <DialogTitle>Send to companions</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Send the chapter beginning to this point (~{chapterContextWords} words, max 7000) to your companions?
+            Share the chapter from the beginning to this point ({chapterContextWords} words, max 7000) with your companions?
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setChapterContextOpen(false)}>Cancel</Button>

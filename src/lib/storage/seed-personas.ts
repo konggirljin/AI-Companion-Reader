@@ -1,7 +1,8 @@
 import { listPersonas, savePersona } from './personas';
 
 export function seedDefaultPersonas(): void {
-  if (listPersonas().length > 0) return;
+  const existing = listPersonas();
+  const existingNames = new Set(existing.map((p) => p.name));
 
   const defaults = [
     {
@@ -37,6 +38,6 @@ export function seedDefaultPersonas(): void {
   ];
 
   for (const p of defaults) {
-    savePersona(p);
+    if (!existingNames.has(p.name)) savePersona(p);
   }
 }

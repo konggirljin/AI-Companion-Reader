@@ -5,11 +5,15 @@ import { Plus, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Persona } from '@/lib/types';
 import { listPersonas } from '@/lib/storage/personas';
+import { seedDefaultPersonas } from '@/lib/storage/seed-personas';
 import { PersonaCard } from '@/components/persona/persona-card';
 
 export default function PersonaListPage() {
   const [personas, setPersonas] = useState<Persona[]>([]);
-  const refresh = useCallback(() => setPersonas(listPersonas()), []);
+  const refresh = useCallback(() => {
+    seedDefaultPersonas();
+    setPersonas(listPersonas());
+  }, []);
   useEffect(refresh, [refresh]);
 
   return (
