@@ -53,7 +53,6 @@ export function PersonaPicker({ open, onOpenChange, personas, onConfirm }: Perso
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium">{p.name}</span>
-                <span className="block truncate text-xs text-muted-foreground">{p.characterDescription}</span>
               </span>
             </button>
           ))}
