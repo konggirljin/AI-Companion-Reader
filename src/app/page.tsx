@@ -7,6 +7,7 @@ import { Bookshelf } from '@/components/books/bookshelf';
 import { BookHeader } from '@/components/books/book-header';
 import { FilterPills, type FilterId } from '@/components/books/filter-pills';
 import { VaseDecoration } from '@/components/books/motifs';
+import { seedDefaultBook } from '@/lib/storage/seed-book';
 
 export default function HomePage() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -21,7 +22,14 @@ export default function HomePage() {
       }),
     );
   }, [filter]);
-  useEffect(refresh, [refresh]);
+  useEffect(() => {
+    const init = async () => {
+      await seedDefaultBook();
+      refresh();
+    };
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="mx-auto flex w-full max-w-[1024px] flex-1 flex-col">

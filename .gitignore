@@ -29,6 +29,9 @@ yarn-error.log*
 .env
 .env*.local
 
+# default book source (copied to public/books/ at seed time)
+/defaultbook/
+
 # vercel
 .vercel
 
