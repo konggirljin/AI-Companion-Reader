@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, BookmarkPlus } from 'lucide-react';
+import { BookmarkPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,27 @@ export function ReaderView({ book }: { book: Book }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
 
   const [barsVisible, setBarsVisible] = useState(false);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearHideTimer = useCallback(() => {
+    if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
+  }, []);
+
+  const resetHideTimer = useCallback(() => {
+    clearHideTimer();
+    if (barsVisible) {
+      hideTimerRef.current = setTimeout(() => setBarsVisible(false), 5000);
+    }
+  }, [barsVisible, clearHideTimer]);
+
+  const toggleBars = useCallback(() => {
+    setBarsVisible((v) => !v);
+  }, []);
+
+  useEffect(() => {
+    if (barsVisible) resetHideTimer();
+    return () => clearHideTimer();
+  }, [barsVisible, resetHideTimer, clearHideTimer]);
 
   const [pageIndex, setPageIndex] = useState(restorePageRef.current);
   const [pageCount, setPageCount] = useState(1);
@@ -111,9 +132,13 @@ export function ReaderView({ book }: { book: Book }) {
 
   const chapterIndex = Number(chapterId);
   const goChapter = useCallback((delta: number) => {
+    resetHideTimer();
     const next = chapterIndex + delta;
-    if (next >= 0 && next < book.chapterCount) setChapterId(String(next));
-  }, [chapterIndex, book.chapterCount]);
+    if (next >= 0 && next < book.chapterCount) {
+      setChapterId(String(next));
+      setPageIndex(0);
+    }
+  }, [chapterIndex, book.chapterCount, resetHideTimer]);
 
   const firstVisiblePidRef = useRef<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -133,11 +158,11 @@ export function ReaderView({ book }: { book: Book }) {
   }, [book.id, chapterId, pageIndex]);
 
   const goPage = useCallback((delta: number) => {
-    setPageIndex((i) => {
-      const next = Math.min(Math.max(0, i + delta), Math.max(0, pageCount - 1));
-      return next;
-    });
-  }, [pageCount]);
+    resetHideTimer();
+    if (delta < 0 && pageIndex === 0) { goChapter(-1); return; }
+    if (delta > 0 && pageIndex >= pageCount - 1) { goChapter(1); return; }
+    setPageIndex((i) => Math.min(Math.max(0, i + delta), Math.max(0, pageCount - 1)));
+  }, [pageIndex, pageCount, goChapter, resetHideTimer]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -172,10 +197,6 @@ export function ReaderView({ book }: { book: Book }) {
     setChapterContextMode('double_click');
     window.getSelection()?.removeAllRanges();
   }, [chapter]);
-
-  const handleLongPress = useCallback(() => {
-    setBarsVisible((v) => !v);
-  }, []);
 
   const handleSendChapterStart = useCallback(() => {
     if (!chapter) return;
@@ -294,8 +315,11 @@ export function ReaderView({ book }: { book: Book }) {
   );
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      <div className={`transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+    <div className="relative h-screen w-full overflow-hidden">
+      <div
+        className={`absolute left-0 right-0 top-0 z-50 transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onPointerDown={resetHideTimer}
+      >
         <ReaderTopbar
         title={book.title}
         onToc={() => setTocOpen(true)}
@@ -308,10 +332,11 @@ export function ReaderView({ book }: { book: Book }) {
         />
       </div>
       {!chapter ? (
-        <div className="mx-auto w-full max-w-2xl flex-1 px-5 py-6 space-y-4">
+        <div className="absolute inset-0 p-6 space-y-4">
           {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}
         </div>
       ) : (
+        <div className="absolute inset-0">
         <PaginatedChapter
           chapter={chapter}
           imageUrls={imageUrls}
@@ -330,29 +355,22 @@ export function ReaderView({ book }: { book: Book }) {
           registerBackNav={() => {}}
           onDoubleClickParagraph={handleDoubleClickParagraph}
           onSendChapterStart={handleSendChapterStart}
-          onLongPress={handleLongPress}
+          onToggleBars={toggleBars}
+          onInteraction={resetHideTimer}
         />
+        </div>
       )}
       {/* Chapter footer nav uses page-flip */}
       {book.chapterCount > 1 && (
-        <div className={`transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-          <div className="mx-auto w-full max-w-2xl px-5 pb-4 flex items-center justify-between">
-          <Button variant="outline" disabled={chapterIndex <= 0 && pageIndex === 0} onClick={() => {
-            if (pageIndex === 0) goChapter(-1);
-            else goPage(-1);
-          }}>
-            <ChevronLeft className="mr-1 h-4 w-4" />Back
-          </Button>
+        <div
+          className={`absolute bottom-0 left-0 right-0 z-50 transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          onPointerDown={resetHideTimer}
+        >
+          <div className="mx-auto w-full max-w-2xl px-5 pb-4 flex items-center justify-center">
           <span className="text-xs" style={{ color: 'var(--reader-muted, #8A6038)' }}>
             {pageIndex + 1} / {pageCount} · Ch {chapterIndex + 1}/{book.chapterCount}
           </span>
-          <Button variant="outline" disabled={chapterIndex >= book.chapterCount - 1 && pageIndex >= pageCount - 1} onClick={() => {
-            if (pageIndex >= pageCount - 1) goChapter(1);
-            else goPage(1);
-          }}>
-            Next<ChevronRight className="ml-1 h-4 w-4" />
-          </Button>
-                 </div>
+          </div>
         </div>
       )}
       <TocDrawer open={tocOpen} onOpenChange={setTocOpen} toc={book.toc} currentChapterId={chapterId} onSelect={(cid) => { window.scrollTo({ top: 0 }); setChapterId(cid); }} />
@@ -369,13 +387,18 @@ export function ReaderView({ book }: { book: Book }) {
         tocTitles={new Map(book.toc.map((t) => [t.chapterId, t.title]))}
         onJump={jumpTo}
       />
-      <Button
-        variant="secondary" size="icon"
-        className="fixed bottom-6 right-6 z-40 h-11 w-11 rounded-full shadow-lg"
-        onClick={addBookmarkHere} aria-label="Bookmark here"
+      <div
+        className={`fixed bottom-6 right-6 z-40 transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onPointerDown={resetHideTimer}
       >
-        <BookmarkPlus className="h-5 w-5" />
-      </Button>
+        <Button
+          variant="secondary" size="icon"
+          className="h-11 w-11 rounded-full shadow-lg"
+          onClick={addBookmarkHere} aria-label="Bookmark here"
+        >
+          <BookmarkPlus className="h-5 w-5" />
+        </Button>
+      </div>
       <SelectionToolbar position={toolbarPos && !sending ? toolbarPos : null} onSend={() => setPickerOpen(true)} />
       <PersonaPicker open={pickerOpen && !chapterContextOpen} onOpenChange={setPickerOpen} personas={personas} onConfirm={(ids) => void handleSend(ids)} />
       <Dialog open={chapterContextOpen} onOpenChange={setChapterContextOpen}>

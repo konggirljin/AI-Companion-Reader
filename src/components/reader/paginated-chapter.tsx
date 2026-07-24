@@ -50,13 +50,14 @@ interface PaginatedChapterProps {
   registerBackNav: (goDelta: (d: number) => void) => void;
   onDoubleClickParagraph?: (paragraphId: string) => void;
   onSendChapterStart?: () => void;
-  onLongPress?: () => void;
+  onToggleBars?: () => void;
+  onInteraction?: () => void;
 }
 
 export function PaginatedChapter(props: PaginatedChapterProps) {
   const { chapter, imageUrls, prefs, pageIndex, pageCount, onPageCountChange, onFirstVisiblePidChange,
     chapterThreads, pendingPids, personas, registerSelectionContainer, onSelectionResolve,
-    onToolbarPos, registerBackNav, onDoubleClickParagraph, onSendChapterStart, onLongPress } = props;
+    onToolbarPos, registerBackNav, onDoubleClickParagraph, onSendChapterStart, onToggleBars, onInteraction } = props;
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const flowRef = useRef<HTMLDivElement>(null);
@@ -195,17 +196,31 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
     };
   }, [chapter, onSelectionResolve, onToolbarPos, registerSelectionContainer]);
 
-  // Long-press to toggle bars
+  // Long-press middle area to toggle bars
   useEffect(() => {
     const vp = viewportRef.current;
-    if (!vp || !onLongPress) return;
+    if (!vp || !onToggleBars) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let startX = 0, startY = 0;
-    const down = (e: PointerEvent) => {
-      startX = e.clientX; startY = e.clientY;
-      timer = setTimeout(() => { onLongPress(); timer = null; }, 2000);
+    const isMiddleArea = (x: number, y: number) => {
+      const rect = vp.getBoundingClientRect();
+      return (
+        x >= rect.width * 0.325 &&
+        x <= rect.width * 0.675 &&
+        y >= rect.height * 0.325 &&
+        y <= rect.height * 0.675
+      );
     };
-    const up = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    const down = (e: PointerEvent) => {
+      if ((e.target as HTMLElement).closest('button,a,[role="button"]')) return;
+      startX = e.clientX; startY = e.clientY;
+      if (!isMiddleArea(startX, startY)) return;
+      timer = setTimeout(() => { onToggleBars(); timer = null; }, 1000);
+    };
+    const up = () => {
+      if (timer) { clearTimeout(timer); timer = null; }
+      onInteraction?.();
+    };
     const move = (e: PointerEvent) => {
       if (timer && (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10)) {
         clearTimeout(timer); timer = null;
@@ -220,12 +235,12 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       window.removeEventListener('pointermove', move);
       if (timer) clearTimeout(timer);
     };
-  }, [chapter, onLongPress]);
+  }, [chapter, onToggleBars, onInteraction]);
 
   return (
     <div
       ref={viewportRef}
-      className="relative mx-auto w-full max-w-2xl flex-1 px-5 py-6 overflow-hidden"
+      className="relative mx-auto h-full w-full max-w-2xl px-5 py-6 overflow-hidden"
       style={{ ...readerContentStyle(prefs.theme), fontSize: prefs.fontSize, lineHeight: prefs.lineSpacing, fontFamily: prefs.fontFamily }}
       onClick={(e) => {
         const target = e.target as HTMLElement;
