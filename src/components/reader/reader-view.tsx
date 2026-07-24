@@ -42,6 +42,8 @@ export function ReaderView({ book }: { book: Book }) {
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
 
+  const [barsVisible, setBarsVisible] = useState(false);
+
   const [pageIndex, setPageIndex] = useState(restorePageRef.current);
   const [pageCount, setPageCount] = useState(1);
   const [selection, setSelection] = useState<ResolvedSelection | null>(null);
@@ -171,6 +173,10 @@ export function ReaderView({ book }: { book: Book }) {
     window.getSelection()?.removeAllRanges();
   }, [chapter]);
 
+  const handleLongPress = useCallback(() => {
+    setBarsVisible((v) => !v);
+  }, []);
+
   const handleSendChapterStart = useCallback(() => {
     if (!chapter) return;
     let words = 0;
@@ -289,7 +295,8 @@ export function ReaderView({ book }: { book: Book }) {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <ReaderTopbar
+      <div className={`transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <ReaderTopbar
         title={book.title}
         onToc={() => setTocOpen(true)}
         onBookmarks={() => setBookmarksOpen(true)}
@@ -298,7 +305,8 @@ export function ReaderView({ book }: { book: Book }) {
         onUserPersonaActivate={(id) => setActiveUserPersonaId(id)}
         prefs={prefs}
         onChange={updatePrefs}
-      />
+        />
+      </div>
       {!chapter ? (
         <div className="mx-auto w-full max-w-2xl flex-1 px-5 py-6 space-y-4">
           {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}
@@ -322,11 +330,13 @@ export function ReaderView({ book }: { book: Book }) {
           registerBackNav={() => {}}
           onDoubleClickParagraph={handleDoubleClickParagraph}
           onSendChapterStart={handleSendChapterStart}
+          onLongPress={handleLongPress}
         />
       )}
       {/* Chapter footer nav uses page-flip */}
       {book.chapterCount > 1 && (
-        <div className="mx-auto w-full max-w-2xl px-5 pb-4 flex items-center justify-between">
+        <div className={`transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+          <div className="mx-auto w-full max-w-2xl px-5 pb-4 flex items-center justify-between">
           <Button variant="outline" disabled={chapterIndex <= 0 && pageIndex === 0} onClick={() => {
             if (pageIndex === 0) goChapter(-1);
             else goPage(-1);
@@ -342,6 +352,7 @@ export function ReaderView({ book }: { book: Book }) {
           }}>
             Next<ChevronRight className="ml-1 h-4 w-4" />
           </Button>
+                 </div>
         </div>
       )}
       <TocDrawer open={tocOpen} onOpenChange={setTocOpen} toc={book.toc} currentChapterId={chapterId} onSelect={(cid) => { window.scrollTo({ top: 0 }); setChapterId(cid); }} />

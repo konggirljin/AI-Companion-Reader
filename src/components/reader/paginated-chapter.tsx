@@ -50,12 +50,13 @@ interface PaginatedChapterProps {
   registerBackNav: (goDelta: (d: number) => void) => void;
   onDoubleClickParagraph?: (paragraphId: string) => void;
   onSendChapterStart?: () => void;
+  onLongPress?: () => void;
 }
 
 export function PaginatedChapter(props: PaginatedChapterProps) {
   const { chapter, imageUrls, prefs, pageIndex, pageCount, onPageCountChange, onFirstVisiblePidChange,
     chapterThreads, pendingPids, personas, registerSelectionContainer, onSelectionResolve,
-    onToolbarPos, registerBackNav, onDoubleClickParagraph, onSendChapterStart } = props;
+    onToolbarPos, registerBackNav, onDoubleClickParagraph, onSendChapterStart, onLongPress } = props;
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const flowRef = useRef<HTMLDivElement>(null);
@@ -171,13 +172,15 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
         return;
       }
       onSelectionResolve(resolved);
-      const rect = range.getBoundingClientRect();
+      const rects = range.getClientRects();
+      const lastRect = rects.length > 0 ? rects[rects.length - 1] : range.getBoundingClientRect();
       const vp = viewportRef.current;
       const vpRect = vp?.getBoundingClientRect();
-      const offset = pageIndexRef.current * (vp ? vp.clientWidth + GAP : 0);
-      let x = rect.left + rect.width / 2 + offset;
-      if (vpRect) x = Math.min(Math.max(x, vpRect.left + 40), vpRect.right - 40);
-      onToolbarPos({ x, y: rect.bottom + 8 });
+      const offset = pageIndexRef.current * pageWidthRef.current;
+      let x = lastRect.right + offset;
+      const y = lastRect.bottom + 4;
+      if (vpRect) x = Math.min(Math.max(x, vpRect.left + 60), vpRect.right - 60);
+      onToolbarPos({ x, y });
     };
     let t: ReturnType<typeof setTimeout>;
     const onChange = () => update();
@@ -191,6 +194,33 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       registerSelectionContainer(null);
     };
   }, [chapter, onSelectionResolve, onToolbarPos, registerSelectionContainer]);
+
+  // Long-press to toggle bars
+  useEffect(() => {
+    const vp = viewportRef.current;
+    if (!vp || !onLongPress) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let startX = 0, startY = 0;
+    const down = (e: PointerEvent) => {
+      startX = e.clientX; startY = e.clientY;
+      timer = setTimeout(() => { onLongPress(); timer = null; }, 2000);
+    };
+    const up = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    const move = (e: PointerEvent) => {
+      if (timer && (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10)) {
+        clearTimeout(timer); timer = null;
+      }
+    };
+    vp.addEventListener('pointerdown', down);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointermove', move);
+    return () => {
+      vp.removeEventListener('pointerdown', down);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointermove', move);
+      if (timer) clearTimeout(timer);
+    };
+  }, [chapter, onLongPress]);
 
   return (
     <div
