@@ -64,6 +64,7 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
   const pageIndexRef = useRef(pageIndex);
   pageIndexRef.current = pageIndex;
   const overLimitNotifiedRef = useRef(false);
+  const swipeFiredRef = useRef(false);
 
   const pageWidthRef = useRef(GAP);
 
@@ -140,6 +141,8 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       active = false;
       const dx = e.clientX - startX, dy = e.clientY - startY;
       if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+        swipeFiredRef.current = true;
+        setTimeout(() => { swipeFiredRef.current = false; }, 500);
         window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: dx < 0 ? 1 : -1 }));
       }
     };
@@ -243,6 +246,7 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       className="relative mx-auto h-full w-full max-w-2xl px-5 py-6 overflow-hidden"
       style={{ ...readerContentStyle(prefs.theme), fontSize: prefs.fontSize, lineHeight: prefs.lineSpacing, fontFamily: prefs.fontFamily }}
       onClick={(e) => {
+        if (swipeFiredRef.current) { swipeFiredRef.current = false; return; }
         const target = e.target as HTMLElement;
         if (target.closest('button') || target.closest('a') || target.tagName === 'BUTTON' || target.tagName === 'A') return;
         const vp = viewportRef.current;

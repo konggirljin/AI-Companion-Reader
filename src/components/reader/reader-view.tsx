@@ -44,6 +44,7 @@ export function ReaderView({ book }: { book: Book }) {
 
   const [barsVisible, setBarsVisible] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const barsVisibleRef = useRef(barsVisible);
 
   const clearHideTimer = useCallback(() => {
     if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
@@ -64,6 +65,24 @@ export function ReaderView({ book }: { book: Book }) {
     if (barsVisible) resetHideTimer();
     return () => clearHideTimer();
   }, [barsVisible, resetHideTimer, clearHideTimer]);
+
+  useEffect(() => { barsVisibleRef.current = barsVisible; }, [barsVisible]);
+
+  // Android back button: show bars first, then navigate back
+  useEffect(() => {
+    window.history.pushState(null, '', window.location.href);
+    const onPopState = () => {
+      if (!barsVisibleRef.current) {
+        setBarsVisible(true);
+        clearHideTimer();
+        window.history.pushState(null, '', window.location.href);
+      } else {
+        router.push('/');
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [pageIndex, setPageIndex] = useState(restorePageRef.current);
   const [pageCount, setPageCount] = useState(1);
