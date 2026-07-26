@@ -3,11 +3,12 @@ import { parseEpub } from './epub';
 import { parseTxt } from './txt';
 import { idbDelMany, idbKeys, idbSet } from './storage/idb';
 import { createBook } from './storage/books';
+import { detectBookFormat } from './book-format';
 
 export async function importBook(file: File): Promise<Book> {
   const data = await file.arrayBuffer();
-  const isEpub = /\.epub$/i.test(file.name);
-  const parsed: ParsedBook = isEpub ? await parseEpub(data) : await parseTxt(data, file.name);
+  const format = await detectBookFormat(file, data);
+  const parsed: ParsedBook = format === 'epub' ? await parseEpub(data) : await parseTxt(data, file.name);
 
   const bookId = crypto.randomUUID();
   const writtenKeys: string[] = [];
@@ -32,7 +33,7 @@ export async function importBook(file: File): Promise<Book> {
     id: bookId,
     title: parsed.title,
     author: parsed.author,
-    format: isEpub ? 'epub' : 'txt',
+    format,
     coverRef: parsed.cover ? idbKeys.cover(bookId) : undefined,
     toc: parsed.toc,
     chapterCount: parsed.chapters.length,
