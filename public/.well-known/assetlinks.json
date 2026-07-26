@@ -3,6 +3,6 @@
   "target": {
     "namespace": "android_app",
     "package_name": "app.vercel.reader_companion_pink.twa",
-    "sha256_cert_fingerprints": ["B6:86:69:6E:5A:80:73:08:2E:5F:24:D0:D1:E2:A4:6B:53:6B:5F:0F:32:24:F5:53:CB:1E:6F:09:DB:CB:EE:AF"]
+    "sha256_cert_fingerprints": ["3D:7A:6E:98:BD:D6:BE:7E:BB:E9:C5:40:45:2D:85:75:49:B0:BF:D4:64:29:6D:F2:E1:B9:E2:E3:54:E3:B1:6C"]
   }
 }]
