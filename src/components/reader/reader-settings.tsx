@@ -24,7 +24,7 @@ interface ReaderSettingsProps {
 export function ReaderSettings({ open, onOpenChange, prefs, onChange }: ReaderSettingsProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm space-y-4">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-sm space-y-4 overflow-y-auto">
         <DialogHeader><DialogTitle>Reading settings</DialogTitle></DialogHeader>
         <div className="space-y-2">
           <Label>Font size — {prefs.fontSize}px</Label>
@@ -58,6 +58,32 @@ export function ReaderSettings({ open, onOpenChange, prefs, onChange }: ReaderSe
               <SelectItem value="warmWhite">Warm white</SelectItem>
               <SelectItem value="sepia">Sepia</SelectItem>
               <SelectItem value="green">Soft green</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Reading mode</Label>
+          <Select value={prefs.readingMode} onValueChange={(v) => onChange({ ...prefs, readingMode: v as ReaderPrefs['readingMode'] })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="paginated">Paginated</SelectItem>
+              <SelectItem value="scroll">Vertical scroll</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Page animation</Label>
+          <Select
+            value={prefs.pageAnimation}
+            disabled={prefs.readingMode === 'scroll'}
+            onValueChange={(v) => onChange({ ...prefs, pageAnimation: v as ReaderPrefs['pageAnimation'] })}
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Off</SelectItem>
+              <SelectItem value="fast">Fast</SelectItem>
+              <SelectItem value="normal">Normal</SelectItem>
+              <SelectItem value="slow">Slow</SelectItem>
             </SelectContent>
           </Select>
         </div>

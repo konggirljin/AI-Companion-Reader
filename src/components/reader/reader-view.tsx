@@ -102,7 +102,11 @@ export function ReaderView({ book }: { book: Book }) {
   const [chapterContextWords, setChapterContextWords] = useState(0);
   const [chapterContextMode, setChapterContextMode] = useState<'chapter_start' | 'double_click'>('chapter_start');
 
-  const updatePrefs = (next: ReaderPrefs) => { setPrefs(next); savePrefs(next); };
+  const updatePrefs = (next: ReaderPrefs) => {
+    if (next.readingMode !== prefs.readingMode) setPageIndex(0);
+    setPrefs(next);
+    savePrefs(next);
+  };
 
   // Seed + load personas
   useEffect(() => {
@@ -138,7 +142,9 @@ export function ReaderView({ book }: { book: Book }) {
         const flow = document.querySelector('[data-pid]')?.parentElement;
         // find column containing pid → compute pageIndex
         const el = document.querySelector(`[data-pid="${CSS.escape(targetPid)}"]`) as HTMLElement | null;
-        if (el) {
+        if (el && prefs.readingMode === 'scroll') {
+          el.scrollIntoView({ block: 'start' });
+        } else if (el) {
           const flowEl = el.parentElement?.parentElement as HTMLElement; // .break-inside wrapper → flow
           if (flowEl) {
             const pageWidth = (flowEl.parentElement as HTMLElement).clientWidth + 40;
@@ -148,7 +154,7 @@ export function ReaderView({ book }: { book: Book }) {
         }
       });
     }
-  }, [chapter]);
+  }, [chapter, prefs.readingMode]);
 
 
 
@@ -415,7 +421,8 @@ export function ReaderView({ book }: { book: Book }) {
         >
           <div className="mx-auto w-full max-w-2xl px-5 pb-4 flex items-center justify-center">
           <span className="text-xs" style={{ color: 'var(--reader-muted, #8A6038)' }}>
-            {pageIndex + 1} / {pageCount} · Ch {chapterIndex + 1}/{book.chapterCount}
+            {prefs.readingMode === 'paginated' ? `${pageIndex + 1} / ${pageCount} · ` : ''}
+            Ch {chapterIndex + 1}/{book.chapterCount}
           </span>
           </div>
         </div>

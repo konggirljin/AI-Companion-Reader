@@ -12,6 +12,12 @@ import { Button } from '@/components/ui/button';
 export const PAGE_FLIP_EVENT = 'arc:page-flip';
 
 const GAP = 40;
+const PAGE_ANIMATION_MS: Record<ReaderPrefs['pageAnimation'], number> = {
+  none: 0,
+  fast: 150,
+  normal: 250,
+  slow: 450,
+};
 
 function ParagraphBlock({ p, imageUrls, highlighted }: { p: Paragraph; imageUrls: Map<string, string>; highlighted: boolean }) {
   if (p.tag.startsWith('h')) {
@@ -70,9 +76,29 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
 
   const pageWidthRef = useRef(GAP);
 
+  const reportFirstVisibleScrollPid = useCallback(() => {
+    const flow = flowRef.current, vp = viewportRef.current;
+    if (!flow || !vp) return;
+    const viewportTop = vp.getBoundingClientRect().top;
+    const firstVisible = Array.from(flow.querySelectorAll<HTMLElement>('[data-pid]'))
+      .find((el) => el.getBoundingClientRect().bottom > viewportTop + 8);
+    const pid = firstVisible?.getAttribute('data-pid');
+    if (pid) onFirstVisiblePidChange(pid);
+  }, [onFirstVisiblePidChange]);
+
   const reflow = useCallback(() => {
     const flow = flowRef.current, vp = viewportRef.current;
     if (!flow || !vp) return;
+    if (prefs.readingMode === 'scroll') {
+      flow.style.height = 'auto';
+      flow.style.columnWidth = 'auto';
+      flow.style.columnGap = '0px';
+      pageWidthRef.current = vp.clientWidth;
+      onPageCountChange(1);
+      reportFirstVisibleScrollPid();
+      return;
+    }
+    vp.scrollTop = 0;
     const displayHeight = (flow.parentNode as HTMLElement).clientHeight;
     flow.style.height = `${displayHeight}px`;
     const colWidth = flow.clientWidth || vp.clientWidth - 40;
@@ -93,13 +119,13 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       if (right > leftBoundary && left < rightBoundary) { firstPid = el.getAttribute('data-pid'); break; }
     }
     if (firstPid) onFirstVisiblePidChange(firstPid);
-  }, [onPageCountChange, onFirstVisiblePidChange]);
+  }, [onPageCountChange, onFirstVisiblePidChange, prefs.readingMode, reportFirstVisibleScrollPid]);
 
   // reflow on chapter + prefs change
   useEffect(() => {
     const raf = requestAnimationFrame(reflow);
     return () => cancelAnimationFrame(raf);
-  }, [chapter, prefs.fontSize, prefs.lineSpacing, prefs.fontFamily, prefs.theme, reflow]);
+  }, [chapter, prefs.fontSize, prefs.lineSpacing, prefs.fontFamily, prefs.theme, prefs.readingMode, reflow]);
 
   // reflow on resize (debounced)
   useEffect(() => {
@@ -108,6 +134,22 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
     window.addEventListener('resize', onResize);
     return () => { window.removeEventListener('resize', onResize); clearTimeout(t); };
   }, [reflow]);
+
+  useEffect(() => {
+    const vp = viewportRef.current;
+    if (!vp || prefs.readingMode !== 'scroll') return;
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(reportFirstVisibleScrollPid);
+      onInteraction?.();
+    };
+    vp.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      vp.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, [prefs.readingMode, reportFirstVisibleScrollPid, onInteraction]);
 
   // expose navigation
   useEffect(() => {
@@ -119,6 +161,7 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
 
   // keyboard arrows
   useEffect(() => {
+    if (prefs.readingMode !== 'paginated') return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
         window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: -1 }));
@@ -130,10 +173,11 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [prefs.readingMode]);
 
   // swipe via pointer events
   useEffect(() => {
+    if (prefs.readingMode !== 'paginated') return;
     let startX = 0, startY = 0, active = false;
     const vp = viewportRef.current;
     if (!vp) return;
@@ -151,7 +195,7 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
     vp.addEventListener('pointerdown', down);
     window.addEventListener('pointerup', up);
     return () => { vp.removeEventListener('pointerdown', down); window.removeEventListener('pointerup', up); };
-  }, [chapter]);
+  }, [chapter, prefs.readingMode]);
 
   // selection tracking (delegated to reader-view via callbacks)
   useEffect(() => {
@@ -182,7 +226,7 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       const lastRect = rects.length > 0 ? rects[rects.length - 1] : range.getBoundingClientRect();
       const vp = viewportRef.current;
       const vpRect = vp?.getBoundingClientRect();
-      const offset = pageIndexRef.current * pageWidthRef.current;
+      const offset = prefs.readingMode === 'paginated' ? pageIndexRef.current * pageWidthRef.current : 0;
       let x = lastRect.right + offset;
       const y = lastRect.bottom + 4;
       if (vpRect) x = Math.min(Math.max(x, vpRect.left + 60), vpRect.right - 60);
@@ -199,7 +243,7 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       clearTimeout(t);
       registerSelectionContainer(null);
     };
-  }, [chapter, onSelectionResolve, onToolbarPos, registerSelectionContainer]);
+  }, [chapter, onSelectionResolve, onToolbarPos, prefs.readingMode, registerSelectionContainer]);
 
   // Long-press middle area to toggle bars
   useEffect(() => {
@@ -245,9 +289,10 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
   return (
     <div
       ref={viewportRef}
-      className="relative mx-auto h-full w-full max-w-2xl px-5 py-6 overflow-hidden"
+      className={`relative mx-auto h-full w-full max-w-2xl px-5 ${prefs.readingMode === 'scroll' ? 'overflow-y-auto pb-24 pt-6' : 'overflow-hidden py-6'}`}
       style={{ ...readerContentStyle(prefs.theme), fontSize: prefs.fontSize, lineHeight: prefs.lineSpacing, fontFamily: prefs.fontFamily }}
       onClick={(e) => {
+        if (prefs.readingMode !== 'paginated') return;
         if (swipeFiredRef.current) { swipeFiredRef.current = false; return; }
         const target = e.target as HTMLElement;
         if (target.closest('button') || target.closest('a') || target.tagName === 'BUTTON' || target.tagName === 'A') return;
@@ -273,15 +318,22 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       </div>
       <div
         ref={flowRef}
-        style={{
+        style={prefs.readingMode === 'paginated' ? {
           columnWidth: '100%',
           columnGap: `${GAP}px`,
           columnFill: 'auto',
           height: '100%',
           willChange: 'transform',
           transform: `translateX(${-(pageIndex * (pageWidthRef.current || GAP))}px)`,
-          transition: 'transform 250ms ease-out',
-        } as React.CSSProperties}
+          transition: PAGE_ANIMATION_MS[prefs.pageAnimation] === 0
+            ? 'none'
+            : `transform ${PAGE_ANIMATION_MS[prefs.pageAnimation]}ms ease-out`,
+        } : {
+          width: '100%',
+          height: 'auto',
+          transform: 'none',
+          transition: 'none',
+        }}
       >
         {chapter.paragraphs.map((p) => (
           <div key={p.id} className="break-inside-avoid-column" onDoubleClick={() => onDoubleClickParagraph?.(p.id)}>
@@ -293,6 +345,16 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
             />
           </div>
         ))}
+        {prefs.readingMode === 'scroll' && (
+          <div className="flex items-center justify-between gap-3 border-t border-current/15 py-6">
+            <Button variant="outline" onClick={() => window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: -1 }))}>
+              Previous chapter
+            </Button>
+            <Button variant="outline" onClick={() => window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: 1 }))}>
+              Next chapter
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

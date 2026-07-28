@@ -54,7 +54,7 @@ export function ReaderTopbar({ title, onToc, onBookmarks, onComments, activeUser
                 <Type className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-72 space-y-4 p-4">
+            <PopoverContent align="end" className="max-h-[calc(100dvh-4rem)] w-72 space-y-4 overflow-y-auto p-4">
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase text-muted-foreground">Reading settings</p>
               </div>
@@ -90,6 +90,32 @@ export function ReaderTopbar({ title, onToc, onBookmarks, onComments, activeUser
                     <SelectItem value="warmWhite">Warm white</SelectItem>
                     <SelectItem value="sepia">Sepia</SelectItem>
                     <SelectItem value="green">Soft green</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Reading mode</Label>
+                <Select value={prefs.readingMode} onValueChange={(v) => onChange({ ...prefs, readingMode: v as ReaderPrefs['readingMode'] })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="paginated">Paginated</SelectItem>
+                    <SelectItem value="scroll">Vertical scroll</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Page animation</Label>
+                <Select
+                  value={prefs.pageAnimation}
+                  disabled={prefs.readingMode === 'scroll'}
+                  onValueChange={(v) => onChange({ ...prefs, pageAnimation: v as ReaderPrefs['pageAnimation'] })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Off</SelectItem>
+                    <SelectItem value="fast">Fast</SelectItem>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="slow">Slow</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -73,8 +73,17 @@ export interface Settings {
 }
 
 export type ReaderTheme = 'amber' | 'warmWhite' | 'sepia' | 'green';
+export type ReadingMode = 'paginated' | 'scroll';
+export type PageAnimation = 'none' | 'fast' | 'normal' | 'slow';
 
-export interface ReaderPrefs { fontSize: number; fontFamily: string; lineSpacing: number; theme: ReaderTheme }
+export interface ReaderPrefs {
+  fontSize: number;
+  fontFamily: string;
+  lineSpacing: number;
+  theme: ReaderTheme;
+  readingMode: ReadingMode;
+  pageAnimation: PageAnimation;
+}
 
 export interface UserPersona {
   id: string;
