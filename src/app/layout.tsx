@@ -3,6 +3,7 @@ import { Nunito } from 'next/font/google';
 import { PwaRegister } from '@/components/pwa-register';
 import { Toaster } from '@/components/ui/sonner';
 import { BottomNav } from '@/components/bottom-nav';
+import { ClientLangProvider } from '@/components/lang-provider';
 import './globals.css';
 
 const nunito = Nunito({
@@ -22,10 +23,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={nunito.variable}>
       <body className="flex min-h-[100dvh] flex-col bg-background font-sans antialiased">
-        <main className="flex flex-1 flex-col">{children}</main>
-        <BottomNav />
-        <Toaster richColors position="top-center" />
-        <PwaRegister />
+        <ClientLangProvider>
+          <main className="flex flex-1 flex-col">{children}</main>
+          <BottomNav />
+          <Toaster richColors position="top-center" />
+          <PwaRegister />
+        </ClientLangProvider>
       </body>
     </html>
   );

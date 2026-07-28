@@ -182,10 +182,13 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       const lastRect = rects.length > 0 ? rects[rects.length - 1] : range.getBoundingClientRect();
       const vp = viewportRef.current;
       const vpRect = vp?.getBoundingClientRect();
-      const offset = pageIndexRef.current * pageWidthRef.current;
-      let x = lastRect.right + offset;
+      // lastRect.right is already in viewport coordinates (post-transform); do not add page offset
+      let x = lastRect.right;
       const y = lastRect.bottom + 4;
-      if (vpRect) x = Math.min(Math.max(x, vpRect.left + 60), vpRect.right - 60);
+      if (vpRect) {
+        // clamp so toolbar stays visible within the reader column
+        x = Math.min(Math.max(x, vpRect.left + 20), vpRect.right - 20);
+      }
       onToolbarPos({ x, y });
     };
     let t: ReturnType<typeof setTimeout>;

@@ -7,6 +7,7 @@ import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { UserPersonaSwitcher } from './user-persona-switcher';
+import { useLang } from '@/lib/lang-context';
 import type { ReaderPrefs } from '@/lib/types';
 
 const FONT_OPTIONS = [
@@ -30,50 +31,51 @@ interface ReaderTopbarProps {
 }
 
 export function ReaderTopbar({ title, onToc, onBookmarks, onComments, activeUserPersonaId, onUserPersonaActivate, prefs, onChange }: ReaderTopbarProps) {
+  const { t } = useLang();
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
       <div className="mx-auto flex h-12 max-w-2xl items-center justify-between px-2">
-        <Button variant="ghost" size="icon" asChild aria-label="Back to shelf">
+        <Button variant="ghost" size="icon" asChild aria-label={t('reader.backToShelf')}>
           <Link href="/"><ChevronLeft className="h-5 w-5" /></Link>
         </Button>
         <p className="mx-2 flex-1 truncate text-center text-sm font-medium">{title}</p>
         <div className="flex items-center">
           <UserPersonaSwitcher activeId={activeUserPersonaId} onActivate={onUserPersonaActivate} />
-          <Button variant="ghost" size="icon" onClick={onComments} aria-label="Comments">
+          <Button variant="ghost" size="icon" onClick={onComments} aria-label={t('reader.comments')}>
             <MessageSquare className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={onBookmarks} aria-label="Bookmarks">
+          <Button variant="ghost" size="icon" onClick={onBookmarks} aria-label={t('reader.bookmarks')}>
             <Bookmark className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={onToc} aria-label="Table of contents">
+          <Button variant="ghost" size="icon" onClick={onToc} aria-label={t('reader.tableOfContents')}>
             <List className="h-4 w-4" />
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Reader settings">
+              <Button variant="ghost" size="icon" aria-label={t('reader.settings')}>
                 <Type className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-72 space-y-4 p-4">
               <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase text-muted-foreground">Reading settings</p>
+                <p className="text-xs font-semibold uppercase text-muted-foreground">{t('reader.settings.popover')}</p>
               </div>
               <div className="space-y-2">
-                <Label>Font size — {prefs.fontSize}px</Label>
+                <Label>{t('reader.fontSize')} — {prefs.fontSize}px</Label>
                 <Slider
                   min={14} max={26} step={1} value={[prefs.fontSize]}
                   onValueChange={([v]) => onChange({ ...prefs, fontSize: v })}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Line spacing — {prefs.lineSpacing.toFixed(1)}</Label>
+                <Label>{t('reader.lineSpacing')} — {prefs.lineSpacing.toFixed(1)}</Label>
                 <Slider
                   min={1.4} max={2.4} step={0.1} value={[prefs.lineSpacing]}
                   onValueChange={([v]) => onChange({ ...prefs, lineSpacing: v })}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Font family</Label>
+                <Label>{t('reader.fontFamily')}</Label>
                 <Select value={prefs.fontFamily} onValueChange={(v) => onChange({ ...prefs, fontFamily: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -82,14 +84,14 @@ export function ReaderTopbar({ title, onToc, onBookmarks, onComments, activeUser
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Reading theme</Label>
+                <Label>{t('reader.readingTheme')}</Label>
                 <Select value={prefs.theme} onValueChange={(v) => onChange({ ...prefs, theme: v as ReaderPrefs['theme'] })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="amber">Amber (dark)</SelectItem>
-                    <SelectItem value="warmWhite">Warm white</SelectItem>
-                    <SelectItem value="sepia">Sepia</SelectItem>
-                    <SelectItem value="green">Soft green</SelectItem>
+                    <SelectItem value="amber">{t('reader.theme.amber')}</SelectItem>
+                    <SelectItem value="warmWhite">{t('reader.theme.warmWhite')}</SelectItem>
+                    <SelectItem value="sepia">{t('reader.theme.sepia')}</SelectItem>
+                    <SelectItem value="green">{t('reader.theme.green')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

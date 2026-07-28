@@ -70,6 +70,7 @@ export interface Settings {
   model: string;
   systemPromptTemplate: string; // contains {{personas}}
   proxyUrl: string;             // optional CORS proxy base URL (empty = direct)
+  language: 'en' | 'zh-TW';
 }
 
 export type ReaderTheme = 'amber' | 'warmWhite' | 'sepia' | 'green';

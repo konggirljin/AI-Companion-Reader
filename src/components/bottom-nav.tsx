@@ -2,16 +2,17 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Compass, Fingerprint, BookMarked, CircleUser } from 'lucide-react';
-
-const ITEMS = [
-  { href: '/journey', label: 'Journey', icon: Compass },
-  { href: '/persona', label: 'Persona', icon: Fingerprint },
-  { href: '/', label: 'Bookshelf', icon: BookMarked },
-  { href: '/profile', label: 'Profile', icon: CircleUser },
-] as const;
+import { useLang } from '@/lib/lang-context';
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { t } = useLang();
+  const ITEMS = [
+    { href: '/journey', label: t('nav.journey'), icon: Compass },
+    { href: '/persona', label: t('nav.persona'), icon: Fingerprint },
+    { href: '/', label: t('nav.library'), icon: BookMarked },
+    { href: '/profile', label: t('nav.profile'), icon: CircleUser },
+  ] as const;
   if (pathname.startsWith('/read')) return null;
   return (
     <nav

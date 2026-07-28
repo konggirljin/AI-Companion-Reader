@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS: Settings = {
   model: 'gpt-4o-mini',
   systemPromptTemplate: DEFAULT_SYSTEM_PROMPT_TEMPLATE,
   proxyUrl: '/api/proxy',
+  language: 'en',
 };
 
 export const DEFAULT_PREFS: ReaderPrefs = { fontSize: 18, fontFamily: 'var(--font-geist-sans)', lineSpacing: 1.8, theme: 'amber' };
