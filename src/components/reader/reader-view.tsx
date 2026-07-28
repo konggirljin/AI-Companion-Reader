@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Book, NumberedParagraph, ParsedChapter, Persona, ReaderPrefs, Thread } from '@/lib/types';
 import { idbGet, idbKeys } from '@/lib/storage/idb';
-import { saveProgress } from '@/lib/storage/books';
+import { saveProgress, updateBookStatus } from '@/lib/storage/books';
+import { useReadingSession } from '@/lib/use-reading-session';
 import { seedDefaultPersonas } from '@/lib/storage/seed-personas';
 import { getPrefs, savePrefs } from '@/lib/storage/settings';
 import { addBookmark } from '@/lib/storage/bookmarks';
@@ -32,6 +33,7 @@ import type { UserPersona } from '@/lib/types';
 
 export function ReaderView({ book }: { book: Book }) {
   const router = useRouter();
+  useReadingSession(book.id);
   const [chapterId, setChapterId] = useState<string>(book.progress?.chapterId ?? book.toc[0]?.chapterId ?? '0');
   const [chapter, setChapter] = useState<ParsedChapter | null>(null);
 
@@ -156,8 +158,11 @@ export function ReaderView({ book }: { book: Book }) {
     if (next >= 0 && next < book.chapterCount) {
       setChapterId(String(next));
       setPageIndex(0);
+    } else if (delta > 0 && next >= book.chapterCount) {
+      updateBookStatus(book.id, 'finished');
+      toast.success('Finished! 🎉');
     }
-  }, [chapterIndex, book.chapterCount, resetHideTimer]);
+  }, [chapterIndex, book.chapterCount, book.id, resetHideTimer]);
 
   const firstVisiblePidRef = useRef<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

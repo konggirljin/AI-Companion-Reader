@@ -8,6 +8,10 @@ export function listThreads(bookId: string, chapterId?: string): Thread[] {
   );
 }
 
+export function listAllThreads(): Thread[] {
+  return readJson<Thread[]>(K.threads, []);
+}
+
 export function addThreads(threads: Thread[]): void {
   writeJson(K.threads, [...readJson<Thread[]>(K.threads, []), ...threads]);
 }

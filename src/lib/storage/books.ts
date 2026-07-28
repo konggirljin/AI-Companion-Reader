@@ -4,6 +4,7 @@ import { readJson, writeJson } from './local';
 import { idbDelMany, idbKeys } from './idb';
 import { deleteThreadsForBook } from './threads';
 import { deleteBookmarksForBook } from './bookmarks';
+import { deleteSessionsForBook } from './journey-sessions';
 
 export function listBooks(): Book[] {
   return readJson<Book[]>(K.books, []).sort((a, b) => a.order - b.order);
@@ -37,6 +38,7 @@ export async function deleteBook(id: string): Promise<void> {
   writeBooks(listBooks().filter((b) => b.id !== id));
   deleteThreadsForBook(id);
   deleteBookmarksForBook(id);
+  deleteSessionsForBook(id);
   const chapterKeys = Array.from({ length: book?.chapterCount ?? 0 }, (_, i) => idbKeys.chapter(id, String(i)));
   await idbDelMany([idbKeys.file(id), idbKeys.cover(id), ...chapterKeys]).catch(() => {});
 }

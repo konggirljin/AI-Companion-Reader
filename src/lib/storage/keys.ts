@@ -9,4 +9,5 @@ export const K = {
   activeUserPersona: 'arc:activeUserPersona',
   apiProfiles: 'arc:apiProfiles',
   activeApiProfile: 'arc:activeApiProfile',
+  journeySessions: 'arc:journeySessions',
 } as const;
