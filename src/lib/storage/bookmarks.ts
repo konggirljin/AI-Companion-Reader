@@ -3,7 +3,11 @@ import { K } from './keys';
 import { readJson, writeJson } from './local';
 
 export function listBookmarks(bookId: string): Bookmark[] {
-  return readJson<Bookmark[]>(K.bookmarks, []).filter((b) => b.bookId === bookId);
+  return readJson<Bookmark[]>(K.bookmarks, []).filter((b) => b.bookId === bookId && b.kind !== 'highlight');
+}
+
+export function listHighlights(bookId: string): Bookmark[] {
+  return readJson<Bookmark[]>(K.bookmarks, []).filter((b) => b.bookId === bookId && b.kind === 'highlight');
 }
 
 export function addBookmark(b: Omit<Bookmark, 'id' | 'createdAt'>): Bookmark {

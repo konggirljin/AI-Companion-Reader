@@ -13,13 +13,13 @@ export const PAGE_FLIP_EVENT = 'arc:page-flip';
 
 const GAP = 40;
 
-function ParagraphBlock({ p, imageUrls }: { p: Paragraph; imageUrls: Map<string, string> }) {
+function ParagraphBlock({ p, imageUrls, highlighted }: { p: Paragraph; imageUrls: Map<string, string>; highlighted: boolean }) {
   if (p.tag.startsWith('h')) {
     const Tag = p.tag as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
-    return <Tag data-pid={p.id} className="mb-4 mt-8 font-semibold">{p.text}</Tag>;
+    return <Tag data-pid={p.id} className="mb-4 mt-8 font-semibold" style={highlighted ? { textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'hsl(var(--primary))', textUnderlineOffset: '4px' } : undefined}>{p.text}</Tag>;
   }
   return (
-    <p data-pid={p.id} className={p.tag === 'blockquote' ? 'mb-4 border-l-2 pl-4 italic' : 'mb-4'}>
+    <p data-pid={p.id} className={p.tag === 'blockquote' ? 'mb-4 border-l-2 pl-4 italic' : 'mb-4'} style={highlighted ? { textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'hsl(var(--primary))', textUnderlineOffset: '4px' } : undefined}>
       {p.text}
       {p.images?.map((img) => {
         const url = imageUrls.get(img.path);
@@ -52,12 +52,14 @@ interface PaginatedChapterProps {
   onSendChapterStart?: () => void;
   onToggleBars?: () => void;
   onInteraction?: () => void;
+  highlightedPids: Set<string>;
 }
 
 export function PaginatedChapter(props: PaginatedChapterProps) {
   const { chapter, imageUrls, prefs, pageIndex, pageCount, onPageCountChange, onFirstVisiblePidChange,
     chapterThreads, pendingPids, personas, registerSelectionContainer, onSelectionResolve,
-    onToolbarPos, registerBackNav, onDoubleClickParagraph, onSendChapterStart, onToggleBars, onInteraction } = props;
+    onToolbarPos, registerBackNav, onDoubleClickParagraph, onSendChapterStart, onToggleBars, onInteraction,
+    highlightedPids } = props;
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const flowRef = useRef<HTMLDivElement>(null);
@@ -283,7 +285,7 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       >
         {chapter.paragraphs.map((p) => (
           <div key={p.id} className="break-inside-avoid-column" onDoubleClick={() => onDoubleClickParagraph?.(p.id)}>
-            <ParagraphBlock p={p} imageUrls={imageUrls} />
+            <ParagraphBlock p={p} imageUrls={imageUrls} highlighted={highlightedPids.has(p.id)} />
             <CommentPopover
               threads={chapterThreads.filter((t) => t.paragraphId === p.id)}
               pending={pendingPids.includes(p.id)}

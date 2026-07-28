@@ -12,7 +12,7 @@ import { saveProgress, updateBookStatus } from '@/lib/storage/books';
 import { useReadingSession } from '@/lib/use-reading-session';
 import { seedDefaultPersonas } from '@/lib/storage/seed-personas';
 import { getPrefs, savePrefs } from '@/lib/storage/settings';
-import { addBookmark } from '@/lib/storage/bookmarks';
+import { addBookmark, listHighlights } from '@/lib/storage/bookmarks';
 import { listPersonas } from '@/lib/storage/personas';
 import { getSettings } from '@/lib/storage/settings';
 import { addThreads, listThreads } from '@/lib/storage/threads';
@@ -94,6 +94,7 @@ export function ReaderView({ book }: { book: Book }) {
   const [sending, setSending] = useState(false);
   const [pendingPids, setPendingPids] = useState<string[]>([]);
   const [threadsVersion, setThreadsVersion] = useState(0);
+  const [highlightsVersion, setHighlightsVersion] = useState(0);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [activeUserPersonaId, setActiveUserPersonaId] = useState<string | null>(() => getActiveUserPersonaId());
   const [chapterExcerpt, setChapterExcerpt] = useState<NumberedParagraph[] | null>(null);
@@ -259,6 +260,24 @@ export function ReaderView({ book }: { book: Book }) {
     }
   };
 
+  // Highlight text → save as a bookmark with kind='highlight'
+  const handleHighlight = useCallback(() => {
+    if (!selection) return;
+    setToolbarPos(null);
+    const pids = selection.pids;
+    for (const pid of pids) {
+      addBookmark({
+        bookId: book.id,
+        chapterId,
+        paragraphId: pid,
+        kind: 'highlight',
+        text: selection.text,
+      });
+    }
+    setSelection(null);
+    setHighlightsVersion((v) => v + 1);
+  }, [selection, book.id, chapterId]);
+
   // Send to AI
   const handleSend = async (personaIds: string[]) => {
     if (!selection) return;
@@ -338,6 +357,9 @@ export function ReaderView({ book }: { book: Book }) {
     [book.id, chapterId, threadsVersion],
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const highlightedPids = useMemo(() => new Set(listHighlights(book.id).map((h) => h.paragraphId)), [book.id, highlightsVersion]);
+
   return (
     <div className="relative h-screen w-full overflow-hidden">
       <div
@@ -381,6 +403,7 @@ export function ReaderView({ book }: { book: Book }) {
           onSendChapterStart={handleSendChapterStart}
           onToggleBars={toggleBars}
           onInteraction={resetHideTimer}
+          highlightedPids={highlightedPids}
         />
         </div>
       )}
@@ -423,7 +446,7 @@ export function ReaderView({ book }: { book: Book }) {
           <BookmarkPlus className="h-5 w-5" />
         </Button>
       </div>
-      <SelectionToolbar position={toolbarPos && !sending ? toolbarPos : null} onSend={() => setPickerOpen(true)} />
+      <SelectionToolbar position={toolbarPos && !sending ? toolbarPos : null} onSend={() => setPickerOpen(true)} onHighlight={handleHighlight} />
       <PersonaPicker open={pickerOpen && !chapterContextOpen} onOpenChange={setPickerOpen} personas={personas} onConfirm={(ids) => void handleSend(ids)} />
       <Dialog open={chapterContextOpen} onOpenChange={setChapterContextOpen}>
         <DialogContent className="max-w-sm">

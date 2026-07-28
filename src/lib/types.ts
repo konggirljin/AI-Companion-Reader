@@ -54,7 +54,15 @@ export interface Thread {
   createdAt: number;
 }
 
-export interface Bookmark { id: string; bookId: string; chapterId: string; paragraphId: string; createdAt: number }
+export interface Bookmark {
+  id: string;
+  bookId: string;
+  chapterId: string;
+  paragraphId: string;
+  createdAt: number;
+  kind?: 'bookmark' | 'highlight';  // defaults to 'bookmark' for legacy entries
+  text?: string;                     // selected text, only for kind='highlight'
+}
 
 export interface Settings {
   baseUrl: string;
