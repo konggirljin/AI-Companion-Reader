@@ -12,7 +12,14 @@ export const DEFAULT_SETTINGS: Settings = {
   language: 'en',
 };
 
-export const DEFAULT_PREFS: ReaderPrefs = { fontSize: 18, fontFamily: 'var(--font-geist-sans)', lineSpacing: 1.8, theme: 'amber' };
+export const DEFAULT_PREFS: ReaderPrefs = {
+  fontSize: 18,
+  fontFamily: 'var(--font-geist-sans)',
+  lineSpacing: 1.8,
+  theme: 'amber',
+  readingMode: 'paginated',
+  pageAnimation: 'normal',
+};
 
 export function getSettings(): Settings {
   return { ...DEFAULT_SETTINGS, ...readJson<Partial<Settings>>(K.settings, {}) };

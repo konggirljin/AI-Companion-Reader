@@ -116,11 +116,13 @@ describe('user-personas.ts', () => {
   });
 });
 
-describe('settings.ts theme backward-compat', () => {
-  it('getPrefs fills in theme default when saved prefs lack it', () => {
+describe('settings.ts reader preferences backward-compat', () => {
+  it('getPrefs fills in newer defaults when saved prefs lack them', () => {
     localStorage.setItem('arc:prefs', JSON.stringify({ fontSize: 20, fontFamily: 'serif', lineSpacing: 2.0 }));
     const prefs = getPrefs();
     expect(prefs.theme).toBe('amber');
+    expect(prefs.readingMode).toBe('paginated');
+    expect(prefs.pageAnimation).toBe('normal');
     expect(prefs.fontSize).toBe(20);
   });
 });
