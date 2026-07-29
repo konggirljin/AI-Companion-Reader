@@ -153,12 +153,14 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // swipe via pointer events
+  // swipe via pointer events — works anywhere on screen, skips interactive elements
   useEffect(() => {
     let startX = 0, startY = 0, active = false;
-    const vp = viewportRef.current;
-    if (!vp) return;
-    const down = (e: PointerEvent) => { active = true; startX = e.clientX; startY = e.clientY; };
+    const down = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('button, a, input, select, textarea, [role="button"]')) return;
+      active = true; startX = e.clientX; startY = e.clientY;
+    };
     const up = (e: PointerEvent) => {
       if (!active) return;
       active = false;
@@ -169,9 +171,9 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
         window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: dx < 0 ? 1 : -1 }));
       }
     };
-    vp.addEventListener('pointerdown', down);
+    window.addEventListener('pointerdown', down);
     window.addEventListener('pointerup', up);
-    return () => { vp.removeEventListener('pointerdown', down); window.removeEventListener('pointerup', up); };
+    return () => { window.removeEventListener('pointerdown', down); window.removeEventListener('pointerup', up); };
   }, [chapter]);
 
   // selection tracking (delegated to reader-view via callbacks)
