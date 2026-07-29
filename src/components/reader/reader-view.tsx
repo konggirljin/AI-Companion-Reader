@@ -45,6 +45,7 @@ export function ReaderView({ book }: { book: Book }) {
   const [tocOpen, setTocOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [barsVisible, setBarsVisible] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -389,6 +390,8 @@ export function ReaderView({ book }: { book: Book }) {
         onUserPersonaActivate={(id) => setActiveUserPersonaId(id)}
         prefs={prefs}
         onChange={updatePrefs}
+        settingsOpen={settingsOpen}
+        onSettingsOpenChange={setSettingsOpen}
         />
       </div>
       {!chapter ? (
