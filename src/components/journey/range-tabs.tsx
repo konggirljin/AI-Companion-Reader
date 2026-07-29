@@ -1,14 +1,16 @@
 'use client';
+import { useMemo } from 'react';
+import { useLang } from '@/lib/lang-context';
 
 export type Range = 'day' | 'week' | 'month';
 
-const LABELS: Record<Range, string> = {
-  day: 'Day',
-  week: 'Week',
-  month: 'Month',
-};
-
 export function RangeTabs({ value, onChange }: { value: Range; onChange: (v: Range) => void }) {
+  const { t } = useLang();
+  const LABELS: Record<Range, string> = useMemo(() => ({
+    day: t('journey.range.day'),
+    week: t('journey.range.week'),
+    month: t('journey.range.month'),
+  }), [t]);
   const tabs: Range[] = ['day', 'week', 'month'];
   return (
     <div className="inline-flex rounded-full border border-border bg-card/70 p-1 shadow-sm">

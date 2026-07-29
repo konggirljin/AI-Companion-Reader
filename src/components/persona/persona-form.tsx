@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Persona } from '@/lib/types';
 import { savePersona } from '@/lib/storage/personas';
+import { useLang } from '@/lib/lang-context';
 
 const LANGUAGE_OPTIONS = ['中文', 'English', '日本語'];
 
@@ -40,6 +41,7 @@ async function fileToAvatarBase64(file: File): Promise<string> {
 }
 
 export function PersonaForm({ persona }: { persona?: Persona }) {
+  const { t } = useLang();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(persona?.name ?? '');
@@ -56,14 +58,14 @@ export function PersonaForm({ persona }: { persona?: Persona }) {
     try {
       setAvatar(await fileToAvatarBase64(file));
     } catch {
-      toast.error("Couldn't read that image");
+      toast.error(t('persona.imageError'));
     }
   };
 
   const onSave = () => {
     const finalLanguage = customLanguage.trim() || language;
-    if (!name.trim()) { toast.error('Name is required'); return; }
-    if (!description.trim()) { toast.error('Character description is required'); return; }
+    if (!name.trim()) { toast.error(t('persona.nameRequired')); return; }
+    if (!description.trim()) { toast.error(t('persona.descRequired')); return; }
     setBusy(true);
     savePersona({
       id: persona?.id,
@@ -72,7 +74,7 @@ export function PersonaForm({ persona }: { persona?: Persona }) {
       characterDescription: description.trim(),
       language: finalLanguage,
     });
-    toast.success(persona ? 'Persona updated' : 'Persona created');
+    toast.success(persona ? t('persona.updated') : t('persona.created'));
     router.push('/persona');
   };
 
@@ -84,7 +86,7 @@ export function PersonaForm({ persona }: { persona?: Persona }) {
             type="button"
             onClick={() => fileRef.current?.click()}
             className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border bg-muted"
-            aria-label="Upload avatar"
+            aria-label={t('persona.uploadAvatar')}
           >
             {avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -93,25 +95,25 @@ export function PersonaForm({ persona }: { persona?: Persona }) {
               <UserCircle2 className="h-10 w-10 text-muted-foreground" />
             )}
           </button>
-          <div className="text-sm text-muted-foreground">Tap to upload avatar (optional)</div>
+          <div className="text-sm text-muted-foreground">{t('persona.tapUpload')}</div>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onAvatarFile(e.target.files?.[0])} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="p-name">Name</Label>
-          <Input id="p-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Sherlock Holmes" />
+          <Label htmlFor="p-name">{t('persona.name')}</Label>
+          <Input id="p-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('persona.namePlaceholder')} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="p-desc">Character description</Label>
+          <Label htmlFor="p-desc">{t('persona.desc')}</Label>
           <Textarea
             id="p-desc" rows={5} value={description} onChange={(e) => setDescription(e.target.value)}
-            placeholder="A witty and sarcastic detective who enjoys analysing people's motives."
+            placeholder={t('persona.descPlaceholder')}
           />
         </div>
 
         <div className="space-y-2">
-          <Label>Comment language</Label>
+          <Label>{t('persona.commentLang')}</Label>
           <Select value={language} onValueChange={setLanguage}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -120,12 +122,12 @@ export function PersonaForm({ persona }: { persona?: Persona }) {
           </Select>
           <Input
             value={customLanguage} onChange={(e) => setCustomLanguage(e.target.value)}
-            placeholder="Or type a custom language (overrides dropdown)"
+            placeholder={t('persona.customLang')}
           />
         </div>
 
         <Button className="w-full" onClick={onSave} disabled={busy}>
-          {persona ? 'Save changes' : 'Create persona'}
+          {persona ? t('persona.saveChanges') : t('persona.createPersona')}
         </Button>
       </CardContent>
     </Card>

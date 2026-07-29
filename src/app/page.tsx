@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { BookOpen } from 'lucide-react';
+import { useLang } from '@/lib/lang-context';
 import type { Book } from '@/lib/types';
 import { listBooks } from '@/lib/storage/books';
 import { Bookshelf } from '@/components/books/bookshelf';
@@ -10,6 +11,7 @@ import { VaseDecoration } from '@/components/books/motifs';
 import { seedDefaultBook } from '@/lib/storage/seed-book';
 
 export default function HomePage() {
+  const { t } = useLang();
   const [books, setBooks] = useState<Book[]>([]);
   const [filter, setFilter] = useState<FilterId>('all');
   const refresh = useCallback(() => {
@@ -42,7 +44,7 @@ export default function HomePage() {
               <VaseDecoration />
             </div>
             <BookOpen className="h-10 w-10" style={{ color: '#C89060' }} />
-            <p style={{ color: '#9A7048' }}>No books yet. Import an EPUB or TXT file to start reading.</p>
+            <p style={{ color: '#9A7048' }}>{t('bookshelf.noBooks')}</p>
           </div>
         ) : (
           <Bookshelf books={books} onChanged={refresh} />

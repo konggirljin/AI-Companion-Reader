@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { useLang } from '@/lib/lang-context';
 import { RangeTabs, type Range } from '@/components/journey/range-tabs';
 import { StreakStrip } from '@/components/journey/streak-strip';
 import { SummaryCards } from '@/components/journey/summary-cards';
@@ -8,15 +9,16 @@ import { BookTimeChart } from '@/components/journey/book-time-chart';
 import { CompanionStat } from '@/components/journey/companion-stat';
 import { getJourneyStats } from '@/lib/journey-stats';
 
-const RANGE_LABEL: Record<Range, string> = {
-  day: 'Today',
-  week: 'This week',
-  month: 'This month',
-};
-
 export default function JourneyPage() {
+  const { t } = useLang();
   const [range, setRange] = useState<Range>('week');
   const [tick, setTick] = useState(0);
+
+  const RANGE_LABEL: Record<Range, string> = useMemo(() => ({
+    day: t('journey.range.today'),
+    week: t('journey.range.thisWeek'),
+    month: t('journey.range.thisMonth'),
+  }), [t]);
 
   // Re-read stats whenever this page mounts or the user returns to it
   // (the journey route is a separate page from /read — each navigation re-mounts
@@ -40,12 +42,12 @@ export default function JourneyPage() {
       <header className="flex items-end justify-between px-4 pb-3 pt-6">
         <div>
           <h1 className="text-[22px] font-extrabold leading-none" style={{ color: 'hsl(var(--foreground))' }}>
-            Journey
+            {t('journey.title')}
           </h1>
           <p className="mt-1 text-xs text-muted-foreground">
             {noData
-              ? 'Open a book to start tracking your journey.'
-              : `${fmtDuration(stats.summary.totalMinutes)} read across ${stats.summary.booksInProgress + stats.summary.booksRead} books`}
+              ? t('journey.empty')
+              : t('journey.readAcrossBooks', { time: fmtDuration(stats.summary.totalMinutes), count: stats.summary.booksInProgress + stats.summary.booksRead })}
           </p>
         </div>
         <RangeTabs value={range} onChange={setRange} />
@@ -54,10 +56,10 @@ export default function JourneyPage() {
       {noData ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-16 text-center">
           <p className="text-sm font-semibold text-muted-foreground">
-            No reading recorded yet.
+            {t('journey.noReading')}
           </p>
           <p className="max-w-xs text-xs text-muted-foreground">
-            Pick a book from your shelf and a session will start tracking automatically when you read.
+            {t('journey.pickBook')}
           </p>
         </div>
       ) : (

@@ -1,4 +1,5 @@
 'use client';
+import { useLang } from '@/lib/lang-context';
 import { Clock, Library, Star, BookOpen } from 'lucide-react';
 type IconType = typeof Clock;
 
@@ -47,29 +48,30 @@ function StatCard({
 }
 
 export function SummaryCards({ data }: { data: SummaryData }) {
+  const { t } = useLang();
   return (
     <div className="grid grid-cols-2 gap-3">
       <StatCard
         icon={Clock}
-        label="Reading time"
+        label={t('journey.readingTime')}
         value={formatDuration(data.totalMinutes)}
-        sub="All time"
+        sub={t('journey.summary.allTime')}
       />
       <StatCard
         icon={Library}
-        label="Books read"
+        label={t('journey.summary.booksRead')}
         value={String(data.booksRead)}
-        sub="Finished"
+        sub={t('journey.summary.finished')}
       />
       <StatCard
         icon={BookOpen}
-        label="Books in progress"
+        label={t('journey.summary.booksInProgress')}
         value={String(data.booksInProgress)}
-        sub="Currently reading"
+        sub={t('journey.summary.currentlyReading')}
       />
       <StatCard
         icon={Star}
-        label="Most-read book"
+        label={t('journey.summary.mostReadBook')}
         value={data.topBook?.title ?? '—'}
         sub={data.topBook ? formatDuration(data.topBook.minutes) : undefined}
       />

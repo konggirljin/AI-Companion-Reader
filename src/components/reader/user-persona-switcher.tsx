@@ -8,6 +8,7 @@ import {
   listUserPersonas, getActiveUserPersonaId, setActiveUserPersonaId,
 } from '@/lib/storage/user-personas';
 import type { UserPersona } from '@/lib/types';
+import { useLang } from '@/lib/lang-context';
 
 interface UserPersonaSwitcherProps {
   activeId: string | null;
@@ -15,6 +16,7 @@ interface UserPersonaSwitcherProps {
 }
 
 export function UserPersonaSwitcher({ activeId, onActivate }: UserPersonaSwitcherProps) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const [personas, setPersonas] = useState<UserPersona[]>([]);
 
@@ -30,7 +32,7 @@ export function UserPersonaSwitcher({ activeId, onActivate }: UserPersonaSwitche
     </Button>
   ) : (
     <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => setOpen(true)}>
-      <UserCircle2 className="h-3.5 w-3.5" />Set persona
+      <UserCircle2 className="h-3.5 w-3.5" />{t('profile.setPersona')}
     </Button>
   );
 
@@ -38,9 +40,9 @@ export function UserPersonaSwitcher({ activeId, onActivate }: UserPersonaSwitche
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild><span>{trigger}</span></PopoverTrigger>
       <PopoverContent align="end" className="w-64 space-y-2 p-3">
-        <p className="text-xs font-semibold uppercase text-muted-foreground">Reader persona</p>
+        <p className="text-xs font-semibold uppercase text-muted-foreground">{t('profile.readerPersona')}</p>
         {personas.length === 0 && (
-          <p className="text-sm text-muted-foreground">No personas yet. Add one in Profile.</p>
+          <p className="text-sm text-muted-foreground">{t('profile.noPersonasYet')}</p>
         )}
         {personas.map((p) => (
           <button key={p.id} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted"
@@ -54,7 +56,7 @@ export function UserPersonaSwitcher({ activeId, onActivate }: UserPersonaSwitche
         ))}
         <div className="pt-2 border-t">
           <Button asChild variant="ghost" size="sm" className="w-full justify-start">
-          <Link href="/profile"><Settings className="h-4 w-4" />Manage</Link>
+          <Link href="/profile"><Settings className="h-4 w-4" />{t('profile.manage')}</Link>
           </Button>
         </div>
       </PopoverContent>

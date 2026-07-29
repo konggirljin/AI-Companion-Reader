@@ -1,6 +1,7 @@
 'use client';
 import { MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLang } from '@/lib/lang-context';
 
 interface CommentBubbleProps {
   count: number;
@@ -9,11 +10,12 @@ interface CommentBubbleProps {
 }
 
 export function CommentBubble({ count, pending, onClick }: CommentBubbleProps) {
+  const { t } = useLang();
   if (pending) {
     return (
       <span className="inline-flex h-6 items-center gap-1 rounded-full border bg-muted px-2 text-xs text-muted-foreground animate-pulse">
         <MessageCircle className="h-3 w-3" />
-        companion is reading…
+        {t('reader.companionReading')}
       </span>
     );
   }
@@ -24,7 +26,7 @@ export function CommentBubble({ count, pending, onClick }: CommentBubbleProps) {
         'inline-flex h-6 items-center gap-1 rounded-full border bg-accent px-2 text-xs font-medium',
         'transition-all duration-200 hover:shadow-sm',
       )}
-      aria-label={`${count} comments`}
+      aria-label={t('reader.countComments', { count })}
     >
       <MessageCircle className="h-3 w-3" />
       {count}

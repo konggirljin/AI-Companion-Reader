@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useLang } from '@/lib/lang-context';
 import { fmtDuration } from './reading-time-chart';
 
 export interface BookSeries {
@@ -26,6 +27,7 @@ export function BookTimeChart({
   series: BookSeries[];
   rangeLabel: string;
 }) {
+  const { t } = useLang();
   const [active, setActive] = useState<number | null>(null);
 
   if (mode === 'rows') {
@@ -35,7 +37,7 @@ export function BookTimeChart({
       <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex items-baseline justify-between">
           <h2 className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-            Reading time per book
+            {t('journey.readingTimePerBook')}
           </h2>
           <div className="text-xs text-muted-foreground">
             {rangeLabel}:{' '}
@@ -44,7 +46,7 @@ export function BookTimeChart({
         </div>
         <div className="mt-4 space-y-3">
           {series.length === 0 ? (
-            <div className="text-xs text-muted-foreground py-6 text-center">No reading logged yet.</div>
+            <div className="text-xs text-muted-foreground py-6 text-center">{t('journey.noReadingLogged')}</div>
           ) : (
             series.map((s) => {
               const mins = s.minutesByCol[0] ?? 0;
@@ -88,7 +90,7 @@ export function BookTimeChart({
     <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex items-baseline justify-between">
         <h2 className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-          Reading time per book
+          {t('journey.readingTimePerBook')}
         </h2>
         <div className="text-xs text-muted-foreground">
           {rangeLabel}:{' '}
@@ -173,7 +175,7 @@ export function BookTimeChart({
             ) : null}
           </div>
         ) : (
-          <div className="text-muted-foreground">Tap a column for the book breakdown.</div>
+          <div className="text-muted-foreground">{t('journey.tapColumn')}</div>
         )}
       </div>
 

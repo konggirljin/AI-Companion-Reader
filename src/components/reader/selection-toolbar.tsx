@@ -1,6 +1,7 @@
 'use client';
 import { Sparkles, Highlighter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useLang } from '@/lib/lang-context';
 
 interface SelectionToolbarProps {
   position: { x: number; y: number } | null;
@@ -9,6 +10,7 @@ interface SelectionToolbarProps {
 }
 
 export function SelectionToolbar({ position, onSend, onHighlight }: SelectionToolbarProps) {
+  const { t } = useLang();
   if (!position) return null;
   return (
     <div
@@ -24,7 +26,7 @@ export function SelectionToolbar({ position, onSend, onHighlight }: SelectionToo
           onClick={onHighlight}
         >
           <Highlighter className="mr-1 h-3.5 w-3.5 text-primary" />
-          <span className="text-xs font-medium">Highlight</span>
+          <span className="text-xs font-medium">{t('reader.highlightBtn')}</span>
         </Button>
         <Button
           size="sm"
@@ -34,7 +36,7 @@ export function SelectionToolbar({ position, onSend, onHighlight }: SelectionToo
           onClick={onSend}
         >
           <Sparkles className="mr-1 h-3.5 w-3.5 text-primary" />
-          <span className="text-xs font-medium">Send</span>
+          <span className="text-xs font-medium">{t('reader.sendBtn')}</span>
         </Button>
       </div>
     </div>

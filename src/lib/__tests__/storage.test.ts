@@ -88,7 +88,7 @@ describe('bookmarks.ts + settings.ts', () => {
   });
   it('settings/prefs defaults and persistence', () => {
     expect(getSettings()).toEqual(DEFAULT_SETTINGS);
-    saveSettings({ baseUrl: 'https://api.example.com/v1', apiKey: 'k', model: 'm', systemPromptTemplate: 'tpl {{personas}}', proxyUrl: '' });
+    saveSettings({ baseUrl: 'https://api.example.com/v1', apiKey: 'k', model: 'm', systemPromptTemplate: 'tpl {{personas}}', proxyUrl: '', language: 'en' });
     expect(getSettings().model).toBe('m');
     expect(getPrefs()).toEqual(DEFAULT_PREFS);
     savePrefs({ fontSize: 20, fontFamily: 'serif', lineSpacing: 2.0, theme: 'amber' });

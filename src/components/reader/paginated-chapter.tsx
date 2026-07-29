@@ -6,6 +6,9 @@ import type { ResolvedSelection } from '@/lib/selection';
 import { readerContentStyle } from '@/lib/reader-themes';
 import { resolveSelection } from '@/lib/selection';
 import { countWords } from '@/lib/word-count';
+import { useLang } from '@/lib/lang-context';
+import { t as translate } from '@/lib/i18n';
+import { getSettings } from '@/lib/storage/settings';
 import { CommentPopover } from './comment-popover';
 import { Button } from '@/components/ui/button';
 
@@ -62,6 +65,7 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
     highlightedPids } = props;
 
   const viewportRef = useRef<HTMLDivElement>(null);
+  const { t } = useLang();
   const flowRef = useRef<HTMLDivElement>(null);
   const pageIndexRef = useRef(pageIndex);
   pageIndexRef.current = pageIndex;
@@ -173,7 +177,7 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
         onToolbarPos(null); onSelectionResolve(null);
         if (!overLimitNotifiedRef.current) {
           overLimitNotifiedRef.current = true;
-          import('sonner').then(({ toast }) => toast.error('Select a shorter passage (max 7000 words)'));
+          import('sonner').then(({ toast }) => { const lang = getSettings().language; toast.error(translate(lang, 'reader.selectShorter')); });
         }
         return;
       }
@@ -269,7 +273,7 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       <div className="mb-2 flex items-center gap-2">
         <h2 className="text-xl font-bold">{chapter.title}</h2>
         {onSendChapterStart && (
-          <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onSendChapterStart} aria-label="Send chapter to companions">
+          <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onSendChapterStart} aria-label={t('reader.sendChapter')}>
             <Send className="h-3.5 w-3.5" />
           </Button>
         )}

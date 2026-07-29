@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator';
 import type { Persona, Thread } from '@/lib/types';
 import { CommentBubble } from './comment-bubble';
+import { useLang } from '@/lib/lang-context';
 
 interface CommentPopoverProps {
   threads: Thread[];
@@ -12,6 +13,7 @@ interface CommentPopoverProps {
 }
 
 export function CommentPopover({ threads, pending, personas }: CommentPopoverProps) {
+  const { t } = useLang();
   if (pending && threads.length === 0) {
     return (
       <div className="-mt-3 mb-4 flex justify-end">
@@ -48,7 +50,7 @@ export function CommentPopover({ threads, pending, personas }: CommentPopoverPro
                       )}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold">{persona?.name ?? 'Former companion'}</p>
+                      <p className="text-xs font-semibold">{persona?.name ?? t('reader.formerCompanion')}</p>
                       <p className="mt-0.5 whitespace-pre-wrap text-sm">{comment.text}</p>
                     </div>
                   </div>

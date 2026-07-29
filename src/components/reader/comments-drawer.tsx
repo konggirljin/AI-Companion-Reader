@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { UserCircle2 } from 'lucide-react';
 import type { Persona, Thread } from '@/lib/types';
 import { listThreads } from '@/lib/storage/threads';
+import { useLang } from '@/lib/lang-context';
 
 interface CommentsDrawerProps {
   open: boolean;
@@ -26,6 +27,7 @@ function avatarFor(persona: Persona | undefined) {
 }
 
 export function CommentsDrawer({ open, onOpenChange, bookId, personas, tocTitles, onJump }: CommentsDrawerProps) {
+  const { t: tFn } = useLang();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [filter, setFilter] = useState<string | null>(null);
 
@@ -52,37 +54,37 @@ export function CommentsDrawer({ open, onOpenChange, bookId, personas, tocTitles
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-80 overflow-y-auto">
-        <SheetHeader><SheetTitle>Comments</SheetTitle></SheetHeader>
+        <SheetHeader><SheetTitle>{tFn('reader.comments')}</SheetTitle></SheetHeader>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          <Button size="sm" variant={filter === null ? 'secondary' : 'outline'} onClick={() => setFilter(null)}>All</Button>
+          <Button size="sm" variant={filter === null ? 'secondary' : 'outline'} onClick={() => setFilter(null)}>{tFn('reader.all')}</Button>
           {activePersonaIds.map((id) => {
             const p = personaById.get(id);
             return (
               <Button key={id} size="sm" variant={filter === id ? 'secondary' : 'outline'} onClick={() => setFilter(filter === id ? null : id)}>
-                {p?.name ?? 'Former companion'}
+                {p?.name ?? tFn('reader.formerCompanion')}
               </Button>
             );
           })}
         </div>
         <div className="mt-4 space-y-4">
-          {threads.length === 0 && <p className="text-sm text-muted-foreground">No comments yet. Select a passage and ask your companions.</p>}
+          {threads.length === 0 && <p className="text-sm text-muted-foreground">{tFn('reader.noComments')}</p>}
           {byChapter.map(([chapterId, group]) => (
             <div key={chapterId} className="space-y-2">
               <p className="text-xs font-semibold uppercase text-muted-foreground">
                 {tocTitles.get(chapterId) ?? `Chapter ${Number(chapterId) + 1}`}
               </p>
-              {group.map((t) => {
-                const firstPersona = personaById.get(t.comments[0].personaId);
+              {group.map((thread) => {
+                const firstPersona = personaById.get(thread.comments[0].personaId);
                 return (
-                  <button key={t.id} className="w-full rounded-md border p-3 text-left hover:bg-muted/50"
-                    onClick={() => { onJump(t.chapterId, t.paragraphId); onOpenChange(false); }}>
+                  <button key={thread.id} className="w-full rounded-md border p-3 text-left hover:bg-muted/50"
+                    onClick={() => { onJump(thread.chapterId, thread.paragraphId); onOpenChange(false); }}>
                     <div className="flex items-center gap-2">
                       <span className="flex h-6 w-6 overflow-hidden rounded-full bg-muted">{avatarFor(firstPersona)}</span>
-                      <span className="text-xs font-medium">{firstPersona?.name ?? 'Former companion'}</span>
-                      {t.comments.length > 1 && <Badge variant="outline" className="ml-auto">+{t.comments.length - 1}</Badge>}
+                      <span className="text-xs font-medium">{firstPersona?.name ?? tFn('reader.formerCompanion')}</span>
+                      {thread.comments.length > 1 && <Badge variant="outline" className="ml-auto">+{thread.comments.length - 1}</Badge>}
                     </div>
-                    <p className="mt-1 line-clamp-2 text-xs italic text-muted-foreground">&ldquo;{t.selectedText.slice(0, 80)}{t.selectedText.length > 80 ? '…' : ''}&rdquo;</p>
-                    <p className="mt-1 line-clamp-3 text-sm">{t.comments[0].text}</p>
+                    <p className="mt-1 line-clamp-2 text-xs italic text-muted-foreground">&ldquo;{thread.selectedText.slice(0, 80)}{thread.selectedText.length > 80 ? '…' : ''}&rdquo;</p>
+                    <p className="mt-1 line-clamp-3 text-sm">{thread.comments[0].text}</p>
                   </button>
                 );
               })}

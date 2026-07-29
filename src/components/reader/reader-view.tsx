@@ -15,6 +15,7 @@ import { getPrefs, savePrefs } from '@/lib/storage/settings';
 import { addBookmark, listHighlights } from '@/lib/storage/bookmarks';
 import { listPersonas } from '@/lib/storage/personas';
 import { getSettings } from '@/lib/storage/settings';
+import { useLang } from '@/lib/lang-context';
 import { addThreads, listThreads } from '@/lib/storage/threads';
 import { countWords } from '@/lib/word-count';
 import { sendToPersonas } from '@/lib/ai';
@@ -33,6 +34,7 @@ import type { UserPersona } from '@/lib/types';
 
 export function ReaderView({ book }: { book: Book }) {
   const router = useRouter();
+  const { t } = useLang();
   useReadingSession(book.id);
   const [chapterId, setChapterId] = useState<string>(book.progress?.chapterId ?? book.toc[0]?.chapterId ?? '0');
   const [chapter, setChapter] = useState<ParsedChapter | null>(null);
@@ -161,9 +163,9 @@ export function ReaderView({ book }: { book: Book }) {
       setPageIndex(0);
     } else if (delta > 0 && next >= book.chapterCount) {
       updateBookStatus(book.id, 'finished');
-      toast.success('Finished! 🎉');
+      toast.success(t('reader.finished'));
     }
-  }, [chapterIndex, book.chapterCount, book.id, resetHideTimer]);
+  }, [chapterIndex, book.chapterCount, book.id, resetHideTimer, t]);
 
   const firstVisiblePidRef = useRef<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -202,7 +204,7 @@ export function ReaderView({ book }: { book: Book }) {
     const pid = firstVisiblePidRef.current;
     if (!pid) return;
     addBookmark({ bookId: book.id, chapterId, paragraphId: pid });
-    toast.success('Bookmark added');
+    toast.success(t('reader.bookmarkAdded'));
   };
 
   const handleDoubleClickParagraph = useCallback((pid: string) => {
@@ -213,7 +215,7 @@ export function ReaderView({ book }: { book: Book }) {
     const excerpt: NumberedParagraph[] = sliced.map((p, i) => ({ index: i, pid: p.id, text: p.text }));
     const words = excerpt.reduce((sum, p) => sum + countWords(p.text), 0);
     if (words > 7000) {
-      toast.error(`Too long (${words} words, max 7000)`);
+      toast.error(t('reader.tooLong', { words }));
       return;
     }
     setChapterExcerpt(excerpt);
@@ -221,7 +223,7 @@ export function ReaderView({ book }: { book: Book }) {
     setChapterContextOpen(true);
     setChapterContextMode('double_click');
     window.getSelection()?.removeAllRanges();
-  }, [chapter]);
+  }, [chapter, t]);
 
   const handleSendChapterStart = useCallback(() => {
     if (!chapter) return;
@@ -286,7 +288,7 @@ export function ReaderView({ book }: { book: Book }) {
 
     const settings = getSettings();
     if (!settings.apiKey) {
-      toast.error('Set up your AI provider first');
+      toast.error(t('reader.setupAi'));
       router.push('/settings');
       return;
     }
@@ -326,23 +328,23 @@ export function ReaderView({ book }: { book: Book }) {
       if (threads.length) {
         addThreads(threads);
         setThreadsVersion((v) => v + 1);
-        toast.success(`${chosen.length === 1 ? chosen[0].name : 'Companions'} commented`);
+        toast.success(chosen.length === 1 ? t('reader.commented', { name: chosen[0].name }) : t('reader.companionsCommented'));
       } else {
-        toast.info('Nothing caught their attention this time');
+        toast.info(t('reader.nothingCaught'));
       }
       setSelection(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
       const friendly =
-        msg === 'CORS_NETWORK_ERROR' ? 'Connection blocked — the API may not support browser requests (CORS)'
-        : msg === 'TIMEOUT' ? 'Request timed out'
-        : msg.startsWith('API_ERROR_429') ? 'Rate limited — wait a moment'
-        : msg === 'API_ERROR_503' ? 'Service unavailable (503) — the API is temporarily down'
-        : msg.startsWith('API_ERROR_') ? `Provider error (${msg.replace('API_ERROR_', '')})`
-        : msg === 'NO_JSON' || msg === 'BAD_SHAPE' ? 'Your companion got distracted'
-        : 'Network error — check your connection';
+        msg === 'CORS_NETWORK_ERROR' ? t('reader.error.cors')
+        : msg === 'TIMEOUT' ? t('reader.error.timeout')
+        : msg.startsWith('API_ERROR_429') ? t('reader.error.rateLimit')
+        : msg === 'API_ERROR_503' ? t('reader.error.overloaded')
+        : msg.startsWith('API_ERROR_') ? t('reader.error.provider', { msg: msg.replace('API_ERROR_', '') })
+        : msg === 'NO_JSON' || msg === 'BAD_SHAPE' ? t('reader.error.distracted')
+        : t('reader.error.network');
       toast.error(friendly, {
-        action: { label: 'Retry', onClick: () => void handleSend(personaIds) },
+        action: { label: t('reader.retry'), onClick: () => void handleSend(personaIds) },
       });
     } finally {
       setSending(false);
@@ -441,7 +443,7 @@ export function ReaderView({ book }: { book: Book }) {
         <Button
           variant="secondary" size="icon"
           className="h-11 w-11 rounded-full shadow-lg"
-          onClick={addBookmarkHere} aria-label="Bookmark here"
+          onClick={addBookmarkHere} aria-label={t('reader.bookmarkHere')}
         >
           <BookmarkPlus className="h-5 w-5" />
         </Button>
@@ -451,16 +453,16 @@ export function ReaderView({ book }: { book: Book }) {
       <Dialog open={chapterContextOpen} onOpenChange={setChapterContextOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Send to companions</DialogTitle>
+            <DialogTitle>{t('reader.sendTitle')}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             {chapterContextMode === 'chapter_start'
-              ? `Share the entire chapter (${chapterContextWords} words, max 7000) with your companions?`
-              : `Share the chapter from the beginning to this point (${chapterContextWords} words, max 7000) with your companions?`}
+              ? t('reader.shareFullChapter')
+              : t('reader.shareChapter')}
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setChapterContextOpen(false)}>Cancel</Button>
-            <Button onClick={() => { setChapterContextOpen(false); setPickerOpen(true); }}>Confirm</Button>
+            <Button variant="outline" onClick={() => setChapterContextOpen(false)}>{t('reader.cancel')}</Button>
+            <Button onClick={() => { setChapterContextOpen(false); setPickerOpen(true); }}>{t('reader.confirm')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

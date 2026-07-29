@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useLang } from '@/lib/lang-context';
 import { Plus, Pencil, Trash2, UserCircle2, Check } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import {
 } from '@/lib/storage/user-personas';
 
 export function UserPersonaSection() {
+  const { t } = useLang();
   const [personas, setPersonas] = useState<UserPersona[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -35,10 +37,10 @@ export function UserPersonaSection() {
   const openEdit = (p: UserPersona) => { setEditing(p); setName(p.name); setPersonality(p.personality); setOpen(true); };
 
   const save = () => {
-    if (!name.trim()) { toast.error('Name is required'); return; }
-    if (!personality.trim()) { toast.error('Personality is required'); return; }
+    if (!name.trim()) { toast.error(t('profile.nameRequired')); return; }
+    if (!personality.trim()) { toast.error(t('profile.personalityRequired')); return; }
     saveUserPersona({ id: editing?.id, name: name.trim(), personality: personality.trim() });
-    toast.success(editing ? 'Persona updated' : 'Persona created');
+    toast.success(editing ? t('profile.updated') : t('profile.createPersona'));
     setOpen(false);
     refresh();
   };
@@ -51,15 +53,15 @@ export function UserPersonaSection() {
       <CardContent className="space-y-4 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold">Reader persona</h2>
-            <p className="text-sm text-muted-foreground">Optional. Shape how companions talk to you.</p>
+            <h2 className="text-xl font-semibold">{t('profile.readerPersona')}</h2>
+            <p className="text-sm text-muted-foreground">{t('profile.readerPersonaDesc')}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={openNew}><Plus className="mr-1 h-4 w-4" />Add</Button>
+          <Button variant="outline" size="sm" onClick={openNew}><Plus className="mr-1 h-4 w-4" />{t('profile.addPersona')}</Button>
         </div>
 
         {activeId && (
           <div className="rounded-lg border border-primary/40 bg-muted/30 p-3">
-            <p className="text-xs font-medium uppercase text-muted-foreground">Active</p>
+            <p className="text-xs font-medium uppercase text-muted-foreground">{t('profile.active')}</p>
             {(() => {
               const p = personas.find((x) => x.id === activeId);
               if (!p) return null;
@@ -70,7 +72,7 @@ export function UserPersonaSection() {
                     <p className="truncate font-medium">{p.name}</p>
                     <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{p.personality}</p>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={clearActive}>Clear</Button>
+                  <Button variant="ghost" size="sm" onClick={clearActive}>{t('profile.clear')}</Button>
                 </div>
               );
             })()}
@@ -79,7 +81,7 @@ export function UserPersonaSection() {
 
         <div className="space-y-2">
           {personas.length === 0 && !activeId && (
-            <p className="text-sm text-muted-foreground">No reader persona yet. Add one to give companions context about you.</p>
+            <p className="text-sm text-muted-foreground">{t('profile.noReaderPersona')}</p>
           )}
           {personas.map((p) => (
             <div key={p.id} className="flex items-start gap-2 rounded-md border p-3">
@@ -91,9 +93,9 @@ export function UserPersonaSection() {
                 </div>
               </button>
               <div className="flex shrink-0 gap-1">
-                <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" aria-label="Delete"
-                  onClick={() => { deleteUserPersona(p.id); toast.success('Persona deleted'); refresh(); }}>
+                <Button variant="ghost" size="icon" aria-label={t('persona.edit')} onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" aria-label={t('persona.delete')}
+                  onClick={() => { deleteUserPersona(p.id); toast.success(t('persona.deleted')); refresh(); }}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -104,19 +106,19 @@ export function UserPersonaSection() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md space-y-4">
-          <DialogHeader><DialogTitle>{editing ? 'Edit reader persona' : 'New reader persona'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? t('profile.editReaderPersona') : t('profile.newReaderPersona')}</DialogTitle></DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="up-name">Name</Label>
-            <Input id="up-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Alice" />
+            <Label htmlFor="up-name">{t('persona.name')}</Label>
+            <Input id="up-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('profile.namePlaceholder')} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="up-personality">Personality</Label>
+            <Label htmlFor="up-personality">{t('profile.personality')}</Label>
             <Textarea id="up-personality" rows={4} value={personality} onChange={(e) => setPersonality(e.target.value)}
-              placeholder="A curious reader who loves mysteries and dislikes rushed endings." />
+              placeholder={t('profile.personalityPlaceholder')} />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={save}>{editing ? 'Save' : 'Create'}</Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
+            <Button onClick={save}>{editing ? t('common.save') : t('profile.createPersona')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -2,6 +2,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import type { TocEntry } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useLang } from '@/lib/lang-context';
 
 interface TocDrawerProps {
   open: boolean;
@@ -12,10 +13,11 @@ interface TocDrawerProps {
 }
 
 export function TocDrawer({ open, onOpenChange, toc, currentChapterId, onSelect }: TocDrawerProps) {
+  const { t } = useLang();
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-80 overflow-y-auto">
-        <SheetHeader><SheetTitle>Contents</SheetTitle></SheetHeader>
+        <SheetHeader><SheetTitle>{t('reader.contents')}</SheetTitle></SheetHeader>
         <nav className="mt-4 space-y-0.5">
           {toc.map((entry, i) => (
             <button

@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Persona } from '@/lib/types';
+import { useLang } from '@/lib/lang-context';
 
 const MAX_PERSONAS = 5;
 
@@ -16,6 +17,7 @@ interface PersonaPickerProps {
 }
 
 export function PersonaPicker({ open, onOpenChange, personas, onConfirm }: PersonaPickerProps) {
+  const { t } = useLang();
   const [selected, setSelected] = useState<string[]>([]);
 
   const toggle = (id: string) => {
@@ -28,11 +30,11 @@ export function PersonaPicker({ open, onOpenChange, personas, onConfirm }: Perso
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Send to companions (max {MAX_PERSONAS})</DialogTitle>
+          <DialogTitle>{t('reader.sendChapterQuestion', { n: MAX_PERSONAS })}</DialogTitle>
         </DialogHeader>
         <div className="space-y-2">
           {personas.length === 0 && (
-            <p className="text-sm text-muted-foreground">No companions yet — create one from the Personas page.</p>
+            <p className="text-sm text-muted-foreground">{t('reader.noPersonas')}</p>
           )}
           {personas.map((p) => (
             <button
@@ -62,7 +64,7 @@ export function PersonaPicker({ open, onOpenChange, personas, onConfirm }: Perso
             disabled={selected.length === 0}
             onClick={() => { onConfirm(selected); setSelected([]); }}
           >
-            Send ({selected.length})
+            {t('reader.sendBtnWithCount', { n: selected.length })}
           </Button>
         </DialogFooter>
       </DialogContent>

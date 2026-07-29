@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useLang } from '@/lib/lang-context';
 import { Flame, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface StreakDay {
@@ -7,10 +8,6 @@ export interface StreakDay {
   minutes: number;
 }
 
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
 const WEEKDAY = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 export function StreakStrip({
@@ -22,6 +19,12 @@ export function StreakStrip({
   readDates: Set<string>;
   totalMinutesLabel: string;
 }) {
+  const { t } = useLang();
+  const MONTH_NAMES = useMemo(() => [
+    t('journey.months.0'), t('journey.months.1'), t('journey.months.2'), t('journey.months.3'),
+    t('journey.months.4'), t('journey.months.5'), t('journey.months.6'), t('journey.months.7'),
+    t('journey.months.8'), t('journey.months.9'), t('journey.months.10'), t('journey.months.11'),
+  ], [t]);
   const now = new Date();
   const todayY = now.getFullYear();
   const todayM = now.getMonth();
@@ -80,12 +83,12 @@ export function StreakStrip({
             <span className="text-2xl font-extrabold leading-none" style={{ color: 'hsl(var(--foreground))' }}>
               {streak}
             </span>
-            <span className="text-sm font-semibold text-muted-foreground">day streak</span>
+            <span className="text-sm font-semibold text-muted-foreground">{t('journey.streakSuffix')}</span>
           </div>
-          <div className="text-xs text-muted-foreground">Keep it lit</div>
+          <div className="text-xs text-muted-foreground">{t('journey.keepItLit')}</div>
         </div>
         <div className="text-right">
-          <div className="text-xs text-muted-foreground">Total</div>
+          <div className="text-xs text-muted-foreground">{t('journey.total')}</div>
           <div className="text-sm font-bold text-primary">{totalMinutesLabel}</div>
         </div>
       </div>
@@ -96,7 +99,7 @@ export function StreakStrip({
           type="button"
           onClick={goPrev}
           className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-          aria-label="Previous month"
+          aria-label={t('journey.prevMonth')}
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -109,7 +112,7 @@ export function StreakStrip({
           disabled={!canGoNext}
           className="flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-primary/10 disabled:opacity-30"
           style={{ color: canGoNext ? 'hsl(var(--muted-foreground))' : 'hsl(var(--muted-foreground))' }}
-          aria-label="Next month"
+          aria-label={t('journey.nextMonth')}
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -128,7 +131,7 @@ export function StreakStrip({
             return (
               <div
                 key={cell.iso}
-                title={`${cell.iso}${cell.read ? ' · read' : ''}`}
+                title={`${cell.iso}${cell.read ? ` \u00b7 ${t('journey.read')}` : ''}`}
                 className="flex h-9 flex-col items-center justify-center gap-0.5 rounded-md transition-colors hover:bg-primary/10"
               >
                 <span

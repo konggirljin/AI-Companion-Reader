@@ -1,16 +1,18 @@
 'use client';
 import { BookMarked, Heart, Bookmark, Check } from 'lucide-react';
+import { useLang } from '@/lib/lang-context';
 
 export type FilterId = 'all' | 'favorites' | 'toread' | 'finished';
 
-const PILLS: { id: FilterId; label: string; icon: typeof BookMarked }[] = [
-  { id: 'all',       label: 'All Books', icon: BookMarked },
-  { id: 'favorites', label: 'Favorites', icon: Heart },
-  { id: 'toread',    label: 'To Read',   icon: Bookmark },
-  { id: 'finished',  label: 'Finished',  icon: Check },
+const PILLS: { id: FilterId; labelKey: string; icon: typeof BookMarked }[] = [
+  { id: 'all',       labelKey: 'bookshelf.filter.all',       icon: BookMarked },
+  { id: 'favorites', labelKey: 'bookshelf.filter.favorites',  icon: Heart },
+  { id: 'toread',    labelKey: 'bookshelf.filter.toRead',     icon: Bookmark },
+  { id: 'finished',  labelKey: 'bookshelf.filter.finished',   icon: Check },
 ];
 
 export function FilterPills({ value, onChange }: { value: FilterId; onChange: (id: FilterId) => void }) {
+  const { t } = useLang();
   return (
     <div className="flex flex-shrink-0 gap-2 overflow-x-auto px-4 pb-3" style={{ scrollbarWidth: 'none' }}>
       {PILLS.map((p) => {
@@ -31,7 +33,7 @@ export function FilterPills({ value, onChange }: { value: FilterId; onChange: (i
             }}
           >
             <Icon size={13} strokeWidth={active ? 2.5 : 2} />
-            {p.label}
+            {t(p.labelKey)}
           </button>
         );
       })}

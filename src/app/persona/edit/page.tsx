@@ -5,8 +5,10 @@ import type { Persona } from '@/lib/types';
 import { getPersona } from '@/lib/storage/personas';
 import { PersonaForm } from '@/components/persona/persona-form';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLang } from '@/lib/lang-context';
 
 function EditInner() {
+  const { t } = useLang();
   const params = useSearchParams();
   const router = useRouter();
   const [persona, setPersona] = useState<Persona | null | undefined>(undefined);
@@ -19,7 +21,7 @@ function EditInner() {
     <div className="mx-auto flex w-full max-w-[640px] flex-1 flex-col">
       <header className="px-4 pb-4 pt-6">
         <h1 className="text-[22px] font-extrabold leading-none" style={{ color: 'hsl(var(--foreground))' }}>
-          Edit companion
+          {t('persona.editCompanion')}
         </h1>
       </header>
       <div className="flex-1 overflow-y-auto px-4 pb-24" style={{ scrollbarWidth: 'none' }}>

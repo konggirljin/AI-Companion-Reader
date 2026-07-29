@@ -1,4 +1,5 @@
 'use client';
+import { useLang } from '@/lib/lang-context';
 import { Quote, MessageCircle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -17,15 +18,16 @@ export function CompanionStat({
   data: CompanionStatData | null;
   rangeLabel: string;
 }) {
+  const { t } = useLang();
   return (
     <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <h2 className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-        Top companion
+        {t('journey.topCompanion')}
       </h2>
 
       {!data ? (
         <div className="mt-4 rounded-md bg-secondary/20 px-3 py-6 text-center text-xs text-muted-foreground">
-          No companion called in the {rangeLabel.toLowerCase()} yet.
+          {t('journey.noCompanionRange', { range: rangeLabel.toLowerCase() })}
         </div>
       ) : (
         <div className="mt-3">
@@ -42,7 +44,7 @@ export function CompanionStat({
               </div>
               <div className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
                 <MessageCircle className="h-3 w-3" />
-                {data.calls} calls · {rangeLabel}
+                {t('journey.callsRange', { count: data.calls, range: rangeLabel })}
               </div>
             </div>
           </div>
@@ -57,7 +59,7 @@ export function CompanionStat({
               </div>
               {data.bookTitle ? (
                 <div className="mt-1.5 text-right text-[11px] text-muted-foreground">
-                  — on {data.bookTitle}
+                  {t('journey.onBook', { book: data.bookTitle })}
                 </div>
               ) : null}
             </div>

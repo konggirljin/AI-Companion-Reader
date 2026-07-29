@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Persona } from '@/lib/types';
 import { deletePersona } from '@/lib/storage/personas';
+import { useLang } from '@/lib/lang-context';
 
 export function PersonaCard({ persona, onChanged }: { persona: Persona; onChanged: () => void }) {
+  const { t } = useLang();
   return (
     <Card>
       <CardContent className="flex items-start gap-3 p-4">
@@ -28,12 +30,12 @@ export function PersonaCard({ persona, onChanged }: { persona: Persona; onChange
           <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{persona.characterDescription}</p>
         </div>
         <div className="flex shrink-0 gap-1">
-          <Button variant="ghost" size="icon" asChild aria-label="Edit">
+          <Button variant="ghost" size="icon" asChild aria-label={t('persona.edit')}>
             <Link href={`/persona/edit?id=${persona.id}`}><Pencil className="h-4 w-4" /></Link>
           </Button>
           <Button
-            variant="ghost" size="icon" aria-label="Delete"
-            onClick={() => { deletePersona(persona.id); toast.success('Persona deleted'); onChanged(); }}
+            variant="ghost" size="icon" aria-label={t('persona.delete')}
+            onClick={() => { deletePersona(persona.id); toast.success(t('persona.deleted')); onChanged(); }}
           >
             <Trash2 className="h-4 w-4" />
           </Button>

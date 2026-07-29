@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useLang } from '@/lib/lang-context';
 
 export interface BarPoint {
   key: string;
@@ -22,6 +23,7 @@ export function ReadingTimeChart({
   points: BarPoint[];
   rangeLabel: string;
 }) {
+  const { t } = useLang();
   const max = Math.max(1, ...points.map((p) => p.minutes));
   const [active, setActive] = useState<number | null>(null);
   const total = points.reduce((s, p) => s + p.minutes, 0);
@@ -32,7 +34,7 @@ export function ReadingTimeChart({
     <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex items-baseline justify-between">
         <h2 className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-          Reading time
+          {t('journey.readingTime')}
         </h2>
         <div className="text-xs text-muted-foreground">
           {rangeLabel}:{' '}
@@ -90,7 +92,7 @@ export function ReadingTimeChart({
             <span className="font-semibold text-primary">{fmtDuration(activePoint.minutes)}</span>
           </div>
         ) : (
-          <div className="text-xs text-muted-foreground">Tap a bar for details</div>
+          <div className="text-xs text-muted-foreground">{t('journey.tapBar')}</div>
         )}
       </div>
     </div>
