@@ -35,9 +35,8 @@ function renderReader(prefs: ReaderPrefs): string {
       registerSelectionContainer={() => {}}
       onSelectionResolve={() => {}}
       onToolbarPos={() => {}}
-      onSend={() => {}}
       registerBackNav={() => {}}
-      highlightedPids={new Set()}
+      highlightedPids={new Map()}
     />,
   );
 }

@@ -51,7 +51,7 @@ describe('books.ts', () => {
 
 describe('personas.ts', () => {
   it('creates, updates, deletes personas', () => {
-    const p = savePersona({ name: 'Holmes', avatar: '', characterDescription: 'witty detective', language: 'English' });
+    const p = savePersona({ name: 'Holmes', avatar: '', characterDescription: 'witty detective', language: 'English', isDefault: false });
     expect(listPersonas()).toHaveLength(1);
     savePersona({ ...p, name: 'Sherlock' });
     expect(listPersonas()[0].name).toBe('Sherlock');
@@ -91,7 +91,7 @@ describe('bookmarks.ts + settings.ts', () => {
     saveSettings({ baseUrl: 'https://api.example.com/v1', apiKey: 'k', model: 'm', systemPromptTemplate: 'tpl {{personas}}', proxyUrl: '', language: 'en' });
     expect(getSettings().model).toBe('m');
     expect(getPrefs()).toEqual(DEFAULT_PREFS);
-    savePrefs({ fontSize: 20, fontFamily: 'serif', lineSpacing: 2.0, theme: 'amber' });
+    savePrefs({ fontSize: 20, fontFamily: 'serif', lineSpacing: 2.0, theme: 'amber', readingMode: 'paginated', pageAnimation: 'normal' });
     expect(getPrefs().fontSize).toBe(20);
   });
 });

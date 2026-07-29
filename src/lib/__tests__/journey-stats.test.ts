@@ -195,8 +195,8 @@ describe('getJourneyStats', () => {
       },
     ];
     const personas: Persona[] = [
-      { id: 'p1', name: 'Sherlock', avatar: '', characterDescription: '', language: 'English', createdAt: 0 },
-      { id: 'p2', name: 'Watson', avatar: '', characterDescription: '', language: 'English', createdAt: 0 },
+      { id: 'p1', name: 'Sherlock', avatar: '', characterDescription: '', language: 'English', isDefault: false, createdAt: 0 },
+      { id: 'p2', name: 'Watson', avatar: '', characterDescription: '', language: 'English', isDefault: false, createdAt: 0 },
     ];
     vi.mocked(listSessions).mockReturnValue([]);
     vi.mocked(listBooks).mockReturnValue([]);
@@ -217,7 +217,7 @@ describe('getJourneyStats', () => {
       comments: [{ personaId: 'p1', text: 'too old' }],
       createdAt: oldMs,
     }];
-    const personas: Persona[] = [{ id: 'p1', name: 'OldWatson', avatar: '', characterDescription: '', language: 'English', createdAt: 0 }];
+    const personas: Persona[] = [{ id: 'p1', name: 'OldWatson', avatar: '', characterDescription: '', language: 'English', isDefault: false, createdAt: 0 }];
     vi.mocked(listSessions).mockReturnValue([]);
     vi.mocked(listBooks).mockReturnValue([]);
     vi.mocked(listAllThreads).mockReturnValue(threads);

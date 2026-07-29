@@ -4,7 +4,7 @@ import type { Persona, UserPersona } from '@/lib/types';
 
 const holmes: Persona = {
   id: 'p1', name: 'Sherlock Holmes', avatar: '',
-  characterDescription: 'A witty and sarcastic detective.', language: 'English', createdAt: 0,
+  characterDescription: 'A witty and sarcastic detective.', language: 'English', isDefault: false, createdAt: 0,
 };
 
 describe('renderSystemPrompt', () => {

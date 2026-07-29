@@ -3,7 +3,7 @@ import { extractJson, sendToPersonas } from '@/lib/ai';
 import type { NumberedParagraph, Persona, Settings, UserPersona } from '@/lib/types';
 
 const settings: Settings = { baseUrl: 'https://api.test/v1', apiKey: 'k', model: 'm', systemPromptTemplate: 'P: {{personas}}', proxyUrl: '', language: 'en' };
-const persona: Persona = { id: 'p1', name: 'Holmes', avatar: '', characterDescription: 'witty', language: 'English', createdAt: 0 };
+const persona: Persona = { id: 'p1', name: 'Holmes', avatar: '', characterDescription: 'witty', language: 'English', isDefault: false, createdAt: 0 };
 const excerpt: NumberedParagraph[] = [{ index: 0, pid: '0:0', text: 'Hello.' }];
 
 function apiResponse(content: string, status = 200) {
