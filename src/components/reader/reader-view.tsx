@@ -17,7 +17,7 @@ import { listPersonas } from '@/lib/storage/personas';
 import { getSettings } from '@/lib/storage/settings';
 import { useLang } from '@/lib/lang-context';
 import { addThreads, listThreads } from '@/lib/storage/threads';
-import { countWords } from '@/lib/word-count';
+
 import { sendToPersonas } from '@/lib/ai';
 import type { ResolvedSelection } from '@/lib/selection';
 import { ReaderTopbar } from './reader-topbar';
@@ -61,10 +61,6 @@ export function ReaderView({ book }: { book: Book }) {
       hideTimerRef.current = setTimeout(() => setBarsVisible(false), 5000);
     }
   }, [barsVisible, clearHideTimer]);
-
-  const toggleBars = useCallback(() => {
-    setBarsVisible((v) => !v);
-  }, []);
 
   useEffect(() => {
     if (barsVisible) resetHideTimer();
@@ -208,42 +204,6 @@ export function ReaderView({ book }: { book: Book }) {
     addBookmark({ bookId: book.id, chapterId, paragraphId: pid });
     toast.success(t('reader.bookmarkAdded'));
   };
-
-  const handleDoubleClickParagraph = useCallback((pid: string) => {
-    if (!chapter) return;
-    const idx = chapter.paragraphs.findIndex((p) => p.id === pid);
-    if (idx === -1) return;
-    const sliced = chapter.paragraphs.slice(0, idx + 1);
-    const excerpt: NumberedParagraph[] = sliced.map((p, i) => ({ index: i, pid: p.id, text: p.text }));
-    const words = excerpt.reduce((sum, p) => sum + countWords(p.text), 0);
-    if (words > 7000) {
-      toast.error(t('reader.tooLong', { words }));
-      return;
-    }
-    setChapterExcerpt(excerpt);
-    setChapterContextWords(words);
-    setChapterContextOpen(true);
-    setChapterContextMode('double_click');
-    window.getSelection()?.removeAllRanges();
-  }, [chapter, t]);
-
-  const handleSendChapterStart = useCallback(() => {
-    if (!chapter) return;
-    let words = 0;
-    const excerpt: NumberedParagraph[] = [];
-    for (let i = 0; i < chapter.paragraphs.length; i++) {
-      const p = chapter.paragraphs[i];
-      const w = countWords(p.text);
-      if (words + w > 7000) break;
-      excerpt.push({ index: i, pid: p.id, text: p.text });
-      words += w;
-    }
-    if (excerpt.length === 0) return;
-    setChapterExcerpt(excerpt);
-    setChapterContextWords(words);
-    setChapterContextOpen(true);
-    setChapterContextMode('chapter_start');
-  }, [chapter]);
 
   const jumpTo = (targetChapterId: string, paragraphId: string) => {
     if (targetChapterId === chapterId) {
@@ -416,9 +376,6 @@ export function ReaderView({ book }: { book: Book }) {
           onToolbarPos={(pos) => setToolbarPos(pos && !sending ? pos : null)}
           onSend={() => setPickerOpen(true)}
           registerBackNav={() => {}}
-          onDoubleClickParagraph={handleDoubleClickParagraph}
-          onSendChapterStart={handleSendChapterStart}
-          onToggleBars={toggleBars}
           onInteraction={resetHideTimer}
           highlightedPids={highlightedPids}
         />
