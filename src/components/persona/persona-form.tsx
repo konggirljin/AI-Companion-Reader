@@ -51,6 +51,7 @@ export function PersonaForm({ persona }: { persona?: Persona }) {
   const [customLanguage, setCustomLanguage] = useState(
     persona && !LANGUAGE_OPTIONS.includes(persona.language) ? persona.language : '',
   );
+  const [isDefault, setIsDefault] = useState(persona?.isDefault ?? false);
   const [busy, setBusy] = useState(false);
 
   const onAvatarFile = async (file: File | undefined) => {
@@ -73,7 +74,7 @@ export function PersonaForm({ persona }: { persona?: Persona }) {
       avatar,
       characterDescription: description.trim(),
       language: finalLanguage,
-      isDefault: persona?.isDefault ?? false,
+      isDefault,
     });
     toast.success(persona ? t('persona.updated') : t('persona.created'));
     router.push('/persona');
@@ -125,6 +126,17 @@ export function PersonaForm({ persona }: { persona?: Persona }) {
             value={customLanguage} onChange={(e) => setCustomLanguage(e.target.value)}
             placeholder={t('persona.customLang')}
           />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="p-default"
+            checked={isDefault}
+            onChange={(e) => setIsDefault(e.target.checked)}
+            className="h-4 w-4"
+          />
+          <Label htmlFor="p-default" className="text-sm cursor-pointer">{t('persona.defaultCompanion')}</Label>
         </div>
 
         <Button className="w-full" onClick={onSave} disabled={busy}>
