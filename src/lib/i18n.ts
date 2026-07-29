@@ -240,6 +240,13 @@ const STRINGS: Record<string, { en: string; 'zh-TW': string }> = {
   'common.comingSoon': { en: '{label} is coming soon', 'zh-TW': '{label} 即將推出' },
   'common.comingSoonDefault': { en: 'Coming soon', 'zh-TW': '即將推出' },
 
+  'persona.defaultCompanion': { en: 'Default companion (auto-select when sending)', 'zh-TW': '預設伴讀（發送時自動選取）' },
+
+  'reader.sendMode': { en: 'What to send?', 'zh-TW': '發送範圍' },
+  'reader.fromStart': { en: 'From chapter start to here', 'zh-TW': '從章節開頭至此' },
+  'reader.toEnd': { en: 'From here to chapter end', 'zh-TW': '從此至章節結尾' },
+  'reader.maxWords': { en: 'max {n} words', 'zh-TW': '最多 {n} 字' },
+
   'app.title': { en: 'AI Reading Companion', 'zh-TW': 'AI 伴讀' },
   'app.description': { en: 'Read together with AI companions', 'zh-TW': '與 AI 伴讀一起閱讀' },
 };

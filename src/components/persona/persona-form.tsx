@@ -73,6 +73,7 @@ export function PersonaForm({ persona }: { persona?: Persona }) {
       avatar,
       characterDescription: description.trim(),
       language: finalLanguage,
+      isDefault: persona?.isDefault ?? false,
     });
     toast.success(persona ? t('persona.updated') : t('persona.created'));
     router.push('/persona');

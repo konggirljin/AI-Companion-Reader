@@ -39,6 +39,7 @@ export interface Persona {
   avatar: string;             // base64 data URL, <=256px
   characterDescription: string;
   language: string;           // '中文' | 'English' | custom
+  isDefault: boolean;          // auto-select when opening send dialog
   createdAt: number;
 }
 
