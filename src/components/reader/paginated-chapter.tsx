@@ -70,7 +70,6 @@ interface PaginatedChapterProps {
   registerSelectionContainer: (el: HTMLDivElement | null) => void;
   onSelectionResolve: (resolved: ResolvedSelection | null) => void;
   onToolbarPos: (pos: { x: number; y: number } | null) => void;
-  onSend: () => void;
   registerBackNav: (goDelta: (d: number) => void) => void;
   onOpenSettings?: () => void;
   onInteraction?: () => void;
