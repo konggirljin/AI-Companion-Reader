@@ -5,11 +5,11 @@ import { useLang } from '@/lib/lang-context';
 
 interface SelectionToolbarProps {
   position: { x: number; y: number } | null;
-  onSend: () => void;
+  onOpenSendDialog: () => void;
   onHighlight: () => void;
 }
 
-export function SelectionToolbar({ position, onSend, onHighlight }: SelectionToolbarProps) {
+export function SelectionToolbar({ position, onOpenSendDialog, onHighlight }: SelectionToolbarProps) {
   const { t } = useLang();
   if (!position) return null;
   return (
@@ -33,7 +33,7 @@ export function SelectionToolbar({ position, onSend, onHighlight }: SelectionToo
           variant="ghost"
           className="h-8 px-2.5"
           onMouseDown={(e) => e.preventDefault()}
-          onClick={onSend}
+          onClick={onOpenSendDialog}
         >
           <Sparkles className="mr-1 h-3.5 w-3.5 text-primary" />
           <span className="text-xs font-medium">{t('reader.sendBtn')}</span>

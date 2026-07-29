@@ -4,7 +4,6 @@ import { BookmarkPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Book, NumberedParagraph, ParsedChapter, Persona, ReaderPrefs, Thread } from '@/lib/types';
 import { idbGet, idbKeys } from '@/lib/storage/idb';
@@ -17,8 +16,9 @@ import { listPersonas } from '@/lib/storage/personas';
 import { getSettings } from '@/lib/storage/settings';
 import { useLang } from '@/lib/lang-context';
 import { addThreads, listThreads } from '@/lib/storage/threads';
-import { countWords } from '@/lib/word-count';
+
 import { sendToPersonas } from '@/lib/ai';
+import { countWords } from '@/lib/word-count';
 import type { ResolvedSelection } from '@/lib/selection';
 import { ReaderTopbar } from './reader-topbar';
 import { TocDrawer } from './toc-drawer';
@@ -45,6 +45,8 @@ export function ReaderView({ book }: { book: Book }) {
   const [tocOpen, setTocOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sendModeOpen, setSendModeOpen] = useState(false);
 
   const [barsVisible, setBarsVisible] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -60,10 +62,6 @@ export function ReaderView({ book }: { book: Book }) {
       hideTimerRef.current = setTimeout(() => setBarsVisible(false), 5000);
     }
   }, [barsVisible, clearHideTimer]);
-
-  const toggleBars = useCallback(() => {
-    setBarsVisible((v) => !v);
-  }, []);
 
   useEffect(() => {
     if (barsVisible) resetHideTimer();
@@ -81,7 +79,8 @@ export function ReaderView({ book }: { book: Book }) {
         clearHideTimer();
         window.history.pushState(null, '', window.location.href);
       } else {
-        router.push('/');
+        window.removeEventListener('popstate', onPopState);
+        window.location.href = '/';
       }
     };
     window.addEventListener('popstate', onPopState);
@@ -92,17 +91,12 @@ export function ReaderView({ book }: { book: Book }) {
   const [pageCount, setPageCount] = useState(1);
   const [selection, setSelection] = useState<ResolvedSelection | null>(null);
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [pendingPids, setPendingPids] = useState<string[]>([]);
   const [threadsVersion, setThreadsVersion] = useState(0);
   const [highlightsVersion, setHighlightsVersion] = useState(0);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [activeUserPersonaId, setActiveUserPersonaId] = useState<string | null>(() => getActiveUserPersonaId());
-  const [chapterExcerpt, setChapterExcerpt] = useState<NumberedParagraph[] | null>(null);
-  const [chapterContextOpen, setChapterContextOpen] = useState(false);
-  const [chapterContextWords, setChapterContextWords] = useState(0);
-  const [chapterContextMode, setChapterContextMode] = useState<'chapter_start' | 'double_click'>('chapter_start');
 
   const updatePrefs = (next: ReaderPrefs) => { setPrefs(next); savePrefs(next); };
 
@@ -207,41 +201,11 @@ export function ReaderView({ book }: { book: Book }) {
     toast.success(t('reader.bookmarkAdded'));
   };
 
-  const handleDoubleClickParagraph = useCallback((pid: string) => {
-    if (!chapter) return;
-    const idx = chapter.paragraphs.findIndex((p) => p.id === pid);
-    if (idx === -1) return;
-    const sliced = chapter.paragraphs.slice(0, idx + 1);
-    const excerpt: NumberedParagraph[] = sliced.map((p, i) => ({ index: i, pid: p.id, text: p.text }));
-    const words = excerpt.reduce((sum, p) => sum + countWords(p.text), 0);
-    if (words > 7000) {
-      toast.error(t('reader.tooLong', { words }));
-      return;
-    }
-    setChapterExcerpt(excerpt);
-    setChapterContextWords(words);
-    setChapterContextOpen(true);
-    setChapterContextMode('double_click');
-    window.getSelection()?.removeAllRanges();
-  }, [chapter, t]);
-
-  const handleSendChapterStart = useCallback(() => {
-    if (!chapter) return;
-    let words = 0;
-    const excerpt: NumberedParagraph[] = [];
-    for (let i = 0; i < chapter.paragraphs.length; i++) {
-      const p = chapter.paragraphs[i];
-      const w = countWords(p.text);
-      if (words + w > 7000) break;
-      excerpt.push({ index: i, pid: p.id, text: p.text });
-      words += w;
-    }
-    if (excerpt.length === 0) return;
-    setChapterExcerpt(excerpt);
-    setChapterContextWords(words);
-    setChapterContextOpen(true);
-    setChapterContextMode('chapter_start');
-  }, [chapter]);
+  const handleOpenSettings = useCallback(() => {
+    setBarsVisible(true);
+    setSettingsOpen(true);
+    clearHideTimer();
+  }, [clearHideTimer]);
 
   const jumpTo = (targetChapterId: string, paragraphId: string) => {
     if (targetChapterId === chapterId) {
@@ -266,14 +230,15 @@ export function ReaderView({ book }: { book: Book }) {
   const handleHighlight = useCallback(() => {
     if (!selection) return;
     setToolbarPos(null);
-    const pids = selection.pids;
-    for (const pid of pids) {
+    for (const r of selection.ranges) {
       addBookmark({
         bookId: book.id,
         chapterId,
-        paragraphId: pid,
+        paragraphId: r.pid,
         kind: 'highlight',
         text: selection.text,
+        startOffset: r.start,
+        endOffset: r.end,
       });
     }
     setSelection(null);
@@ -281,9 +246,9 @@ export function ReaderView({ book }: { book: Book }) {
   }, [selection, book.id, chapterId]);
 
   // Send to AI
-  const handleSend = async (personaIds: string[]) => {
-    if (!selection) return;
-    setPickerOpen(false);
+  const handleSendWithMode = useCallback(async (mode: 'from_start' | 'to_end', personaIds: string[]) => {
+    if (!selection || !chapter) return;
+    setSendModeOpen(false);
     setToolbarPos(null);
 
     const settings = getSettings();
@@ -292,11 +257,45 @@ export function ReaderView({ book }: { book: Book }) {
       router.push('/settings');
       return;
     }
+
     const chosen = personas.filter((p) => personaIds.includes(p.id));
-    const isChapterContext = chapterExcerpt !== null;
-    const useExcerpt = isChapterContext ? chapterExcerpt : selection?.excerpt;
-    const usePids = isChapterContext ? chapterExcerpt.map((p) => p.pid) : selection?.pids;
-    if (!useExcerpt) return;
+    const MAX_WORDS = 7000;
+
+    const lastSelectedPid = selection.ranges[selection.ranges.length - 1].pid;
+    const firstSelectedPid = selection.ranges[0].pid;
+    const firstIdx = chapter.paragraphs.findIndex(p => p.id === firstSelectedPid);
+    const lastIdx = chapter.paragraphs.findIndex(p => p.id === lastSelectedPid);
+    if (firstIdx === -1 || lastIdx === -1) return;
+
+    const range = mode === 'from_start'
+      ? chapter.paragraphs.slice(0, lastIdx + 1)
+      : chapter.paragraphs.slice(firstIdx);
+
+    let excerpt: NumberedParagraph[] = range.map((p, i) => ({
+      index: mode === 'from_start' ? i : firstIdx + i,
+      pid: p.id,
+      text: p.text,
+    }));
+
+    let totalWords = excerpt.reduce((sum, p) => sum + countWords(p.text), 0);
+    if (totalWords > MAX_WORDS) {
+      if (mode === 'from_start') {
+        let removed = 0;
+        while (totalWords > MAX_WORDS && excerpt.length > 1) {
+          totalWords -= countWords(excerpt[0].text);
+          excerpt = excerpt.slice(1);
+          removed++;
+        }
+        excerpt = excerpt.map((p, i) => ({ ...p, index: i + removed }));
+      } else {
+        while (totalWords > MAX_WORDS && excerpt.length > 1) {
+          totalWords -= countWords(excerpt[excerpt.length - 1].text);
+          excerpt = excerpt.slice(0, -1);
+        }
+      }
+    }
+
+    const usePids = excerpt.map(p => p.pid);
     const anchorPid = usePids[usePids.length - 1];
     setSending(true);
     setPendingPids([anchorPid]);
@@ -307,10 +306,10 @@ export function ReaderView({ book }: { book: Book }) {
     if (activeId) userPersona = getUserPersona(activeId);
 
     try {
-      const comments = await sendToPersonas(useExcerpt, chosen, settings, userPersona);
+      const comments = await sendToPersonas(excerpt, chosen, settings, userPersona);
       const byPid = new Map<string, { personaId: string; text: string }[]>();
       for (const c of comments) {
-        const para = useExcerpt[c.paragraphIndex];
+        const para = excerpt[c.paragraphIndex];
         if (!para) continue;
         const arr = byPid.get(para.pid) ?? [];
         arr.push({ personaId: c.personaId, text: c.text });
@@ -321,7 +320,7 @@ export function ReaderView({ book }: { book: Book }) {
         bookId: book.id,
         chapterId,
         paragraphId: pid,
-        selectedText: isChapterContext ? useExcerpt.map((p) => p.text).join('\n\n') : selection!.text,
+        selectedText: excerpt.map((p) => p.text).join('\n\n'),
         comments: threadComments,
         createdAt: Date.now(),
       }));
@@ -344,14 +343,13 @@ export function ReaderView({ book }: { book: Book }) {
         : msg === 'NO_JSON' || msg === 'BAD_SHAPE' ? t('reader.error.distracted')
         : t('reader.error.network');
       toast.error(friendly, {
-        action: { label: t('reader.retry'), onClick: () => void handleSend(personaIds) },
+        action: { label: t('reader.retry'), onClick: () => void handleSendWithMode(mode, personaIds) },
       });
     } finally {
       setSending(false);
       setPendingPids([]);
-      setChapterExcerpt(null);
     }
-  };
+  }, [selection, chapter, personas, book.id, chapterId, router, t]);
 
   const chapterThreads = useMemo(
     () => listThreads(book.id, chapterId),
@@ -360,7 +358,22 @@ export function ReaderView({ book }: { book: Book }) {
   );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const highlightedPids = useMemo(() => new Set(listHighlights(book.id).map((h) => h.paragraphId)), [book.id, highlightsVersion]);
+  const highlightedPids = useMemo(() => {
+    const map = new Map<string, { start: number; end: number }[]>();
+    for (const h of listHighlights(book.id)) {
+      const arr = map.get(h.paragraphId) ?? [];
+      if (h.startOffset != null && h.endOffset != null) {
+        arr.push({ start: h.startOffset, end: h.endOffset });
+      }
+      map.set(h.paragraphId, arr);
+    }
+    return map;
+  }, [book.id, highlightsVersion]);
+
+  const defaultPersonaIds = useMemo(
+    () => personas.filter(p => p.isDefault).map(p => p.id),
+    [personas],
+  );
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
@@ -377,6 +390,8 @@ export function ReaderView({ book }: { book: Book }) {
         onUserPersonaActivate={(id) => setActiveUserPersonaId(id)}
         prefs={prefs}
         onChange={updatePrefs}
+        settingsOpen={settingsOpen}
+        onSettingsOpenChange={setSettingsOpen}
         />
       </div>
       {!chapter ? (
@@ -399,11 +414,8 @@ export function ReaderView({ book }: { book: Book }) {
           registerSelectionContainer={() => {}}
           onSelectionResolve={setSelection}
           onToolbarPos={(pos) => setToolbarPos(pos && !sending ? pos : null)}
-          onSend={() => setPickerOpen(true)}
           registerBackNav={() => {}}
-          onDoubleClickParagraph={handleDoubleClickParagraph}
-          onSendChapterStart={handleSendChapterStart}
-          onToggleBars={toggleBars}
+          onOpenSettings={handleOpenSettings}
           onInteraction={resetHideTimer}
           highlightedPids={highlightedPids}
         />
@@ -448,24 +460,14 @@ export function ReaderView({ book }: { book: Book }) {
           <BookmarkPlus className="h-5 w-5" />
         </Button>
       </div>
-      <SelectionToolbar position={toolbarPos && !sending ? toolbarPos : null} onSend={() => setPickerOpen(true)} onHighlight={handleHighlight} />
-      <PersonaPicker open={pickerOpen && !chapterContextOpen} onOpenChange={setPickerOpen} personas={personas} onConfirm={(ids) => void handleSend(ids)} />
-      <Dialog open={chapterContextOpen} onOpenChange={setChapterContextOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t('reader.sendTitle')}</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            {chapterContextMode === 'chapter_start'
-              ? t('reader.shareFullChapter')
-              : t('reader.shareChapter')}
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setChapterContextOpen(false)}>{t('reader.cancel')}</Button>
-            <Button onClick={() => { setChapterContextOpen(false); setPickerOpen(true); }}>{t('reader.confirm')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SelectionToolbar position={toolbarPos && !sending ? toolbarPos : null} onOpenSendDialog={() => setSendModeOpen(true)} onHighlight={handleHighlight} />
+      <PersonaPicker
+        open={sendModeOpen}
+        onOpenChange={setSendModeOpen}
+        personas={personas}
+        defaultPersonaIds={defaultPersonaIds}
+        onConfirm={(mode, ids) => void handleSendWithMode(mode, ids)}
+      />
     </div>
   );
 }

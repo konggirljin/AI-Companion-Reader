@@ -28,9 +28,11 @@ interface ReaderTopbarProps {
   onUserPersonaActivate: (id: string | null) => void;
   prefs: ReaderPrefs;
   onChange: (prefs: ReaderPrefs) => void;
+  settingsOpen: boolean;
+  onSettingsOpenChange: (open: boolean) => void;
 }
 
-export function ReaderTopbar({ title, onToc, onBookmarks, onComments, activeUserPersonaId, onUserPersonaActivate, prefs, onChange }: ReaderTopbarProps) {
+export function ReaderTopbar({ title, onToc, onBookmarks, onComments, activeUserPersonaId, onUserPersonaActivate, prefs, onChange, settingsOpen, onSettingsOpenChange }: ReaderTopbarProps) {
   const { t } = useLang();
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
@@ -50,7 +52,7 @@ export function ReaderTopbar({ title, onToc, onBookmarks, onComments, activeUser
           <Button variant="ghost" size="icon" onClick={onToc} aria-label={t('reader.tableOfContents')}>
             <List className="h-4 w-4" />
           </Button>
-          <Popover>
+          <Popover open={settingsOpen} onOpenChange={onSettingsOpenChange}>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" aria-label={t('reader.settings')}>
                 <Type className="h-4 w-4" />

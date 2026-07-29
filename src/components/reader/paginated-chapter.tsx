@@ -1,29 +1,41 @@
 'use client';
 import { useCallback, useEffect, useRef } from 'react';
-import { Send } from 'lucide-react';
 import type { ParsedChapter, Paragraph, Persona, ReaderPrefs, Thread } from '@/lib/types';
 import type { ResolvedSelection } from '@/lib/selection';
 import { readerContentStyle } from '@/lib/reader-themes';
 import { resolveSelection } from '@/lib/selection';
 import { countWords } from '@/lib/word-count';
-import { useLang } from '@/lib/lang-context';
 import { t as translate } from '@/lib/i18n';
 import { getSettings } from '@/lib/storage/settings';
 import { CommentPopover } from './comment-popover';
-import { Button } from '@/components/ui/button';
 
 export const PAGE_FLIP_EVENT = 'arc:page-flip';
 
 const GAP = 40;
 
-function ParagraphBlock({ p, imageUrls, highlighted }: { p: Paragraph; imageUrls: Map<string, string>; highlighted: boolean }) {
-  if (p.tag.startsWith('h')) {
-    const Tag = p.tag as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
-    return <Tag data-pid={p.id} className="mb-4 mt-8 font-semibold" style={highlighted ? { textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'hsl(var(--primary))', textUnderlineOffset: '4px' } : undefined}>{p.text}</Tag>;
+const HIGHLIGHT_STYLE: React.CSSProperties = { textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'hsl(var(--primary))', textUnderlineOffset: '4px' };
+
+function HighlightedText({ text, ranges }: { text: string; ranges: { start: number; end: number }[] }) {
+  if (!ranges.length) return <>{text}</>;
+  const sorted = [...ranges].sort((a, b) => a.start - b.start);
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+  for (const r of sorted) {
+    const s = Math.max(0, r.start);
+    const e = Math.min(text.length, r.end);
+    if (s > cursor) parts.push(<span key={`t${cursor}`}>{text.slice(cursor, s)}</span>);
+    if (e > s) parts.push(<span key={`h${s}`} style={HIGHLIGHT_STYLE}>{text.slice(s, e)}</span>);
+    cursor = e;
   }
-  return (
-    <p data-pid={p.id} className={p.tag === 'blockquote' ? 'mb-4 border-l-2 pl-4 italic' : 'mb-4'} style={highlighted ? { textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'hsl(var(--primary))', textUnderlineOffset: '4px' } : undefined}>
-      {p.text}
+  if (cursor < text.length) parts.push(<span key={`t${cursor}`}>{text.slice(cursor)}</span>);
+  return <>{parts}</>;
+}
+
+function ParagraphBlock({ p, imageUrls, highlightRanges }: { p: Paragraph; imageUrls: Map<string, string>; highlightRanges: { start: number; end: number }[] }) {
+  const hasHighlights = highlightRanges.length > 0;
+  const textContent = (
+    <>
+      <HighlightedText text={p.text} ranges={highlightRanges} />
       {p.images?.map((img) => {
         const url = imageUrls.get(img.path);
         return url ? (
@@ -31,6 +43,15 @@ function ParagraphBlock({ p, imageUrls, highlighted }: { p: Paragraph; imageUrls
           <img key={img.path} src={url} alt={img.alt ?? ''} className="my-3 max-h-[60vh] rounded-md object-contain" />
         ) : null;
       })}
+    </>
+  );
+  if (p.tag.startsWith('h')) {
+    const Tag = p.tag as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+    return <Tag data-pid={p.id} className="mb-4 mt-8 font-semibold" style={hasHighlights ? HIGHLIGHT_STYLE : undefined}>{textContent}</Tag>;
+  }
+  return (
+    <p data-pid={p.id} className={p.tag === 'blockquote' ? 'mb-4 border-l-2 pl-4 italic' : 'mb-4'}>
+      {textContent}
     </p>
   );
 }
@@ -49,23 +70,19 @@ interface PaginatedChapterProps {
   registerSelectionContainer: (el: HTMLDivElement | null) => void;
   onSelectionResolve: (resolved: ResolvedSelection | null) => void;
   onToolbarPos: (pos: { x: number; y: number } | null) => void;
-  onSend: () => void;
   registerBackNav: (goDelta: (d: number) => void) => void;
-  onDoubleClickParagraph?: (paragraphId: string) => void;
-  onSendChapterStart?: () => void;
-  onToggleBars?: () => void;
+  onOpenSettings?: () => void;
   onInteraction?: () => void;
-  highlightedPids: Set<string>;
+  highlightedPids: Map<string, { start: number; end: number }[]>;
 }
 
 export function PaginatedChapter(props: PaginatedChapterProps) {
   const { chapter, imageUrls, prefs, pageIndex, pageCount, onPageCountChange, onFirstVisiblePidChange,
     chapterThreads, pendingPids, personas, registerSelectionContainer, onSelectionResolve,
-    onToolbarPos, registerBackNav, onDoubleClickParagraph, onSendChapterStart, onToggleBars, onInteraction,
+    onToolbarPos, registerBackNav, onOpenSettings, onInteraction,
     highlightedPids } = props;
 
   const viewportRef = useRef<HTMLDivElement>(null);
-  const { t } = useLang();
   const flowRef = useRef<HTMLDivElement>(null);
   const pageIndexRef = useRef(pageIndex);
   pageIndexRef.current = pageIndex;
@@ -136,12 +153,14 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // swipe via pointer events
+  // swipe via pointer events — works anywhere on screen, skips interactive elements
   useEffect(() => {
     let startX = 0, startY = 0, active = false;
-    const vp = viewportRef.current;
-    if (!vp) return;
-    const down = (e: PointerEvent) => { active = true; startX = e.clientX; startY = e.clientY; };
+    const down = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('button, a, input, select, textarea, [role="button"]')) return;
+      active = true; startX = e.clientX; startY = e.clientY;
+    };
     const up = (e: PointerEvent) => {
       if (!active) return;
       active = false;
@@ -152,9 +171,9 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
         window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: dx < 0 ? 1 : -1 }));
       }
     };
-    vp.addEventListener('pointerdown', down);
+    window.addEventListener('pointerdown', down);
     window.addEventListener('pointerup', up);
-    return () => { vp.removeEventListener('pointerdown', down); window.removeEventListener('pointerup', up); };
+    return () => { window.removeEventListener('pointerdown', down); window.removeEventListener('pointerup', up); };
   }, [chapter]);
 
   // selection tracking (delegated to reader-view via callbacks)
@@ -208,47 +227,6 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
     };
   }, [chapter, onSelectionResolve, onToolbarPos, registerSelectionContainer]);
 
-  // Long-press middle area to toggle bars
-  useEffect(() => {
-    const vp = viewportRef.current;
-    if (!vp || !onToggleBars) return;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let startX = 0, startY = 0;
-    const isMiddleArea = (x: number, y: number) => {
-      const rect = vp.getBoundingClientRect();
-      return (
-        x >= rect.width * 0.325 &&
-        x <= rect.width * 0.675 &&
-        y >= rect.height * 0.325 &&
-        y <= rect.height * 0.675
-      );
-    };
-    const down = (e: PointerEvent) => {
-      if ((e.target as HTMLElement).closest('button,a,[role="button"]')) return;
-      startX = e.clientX; startY = e.clientY;
-      if (!isMiddleArea(startX, startY)) return;
-      timer = setTimeout(() => { onToggleBars(); timer = null; }, 1000);
-    };
-    const up = () => {
-      if (timer) { clearTimeout(timer); timer = null; }
-      onInteraction?.();
-    };
-    const move = (e: PointerEvent) => {
-      if (timer && (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10)) {
-        clearTimeout(timer); timer = null;
-      }
-    };
-    vp.addEventListener('pointerdown', down);
-    window.addEventListener('pointerup', up);
-    window.addEventListener('pointermove', move);
-    return () => {
-      vp.removeEventListener('pointerdown', down);
-      window.removeEventListener('pointerup', up);
-      window.removeEventListener('pointermove', move);
-      if (timer) clearTimeout(timer);
-    };
-  }, [chapter, onToggleBars, onInteraction]);
-
   return (
     <div
       ref={viewportRef}
@@ -263,21 +241,16 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
         const rect = vp.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const w = rect.width;
-        if (x > w * 0.7) {
+        if (x > w * 0.675) {
           window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: 1 }));
-        } else if (x < w * 0.3) {
+        } else if (x < w * 0.325) {
           window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: -1 }));
+        } else {
+          onOpenSettings?.();
         }
       }}
     >
-      <div className="mb-2 flex items-center gap-2">
-        <h2 className="text-xl font-bold">{chapter.title}</h2>
-        {onSendChapterStart && (
-          <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onSendChapterStart} aria-label={t('reader.sendChapter')}>
-            <Send className="h-3.5 w-3.5" />
-          </Button>
-        )}
-      </div>
+      <h2 className="mb-2 text-xl font-bold">{chapter.title}</h2>
       <div
         ref={flowRef}
         style={{
@@ -291,8 +264,8 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
         } as React.CSSProperties}
       >
         {chapter.paragraphs.map((p) => (
-          <div key={p.id} className="break-inside-avoid-column" onDoubleClick={() => onDoubleClickParagraph?.(p.id)}>
-            <ParagraphBlock p={p} imageUrls={imageUrls} highlighted={highlightedPids.has(p.id)} />
+          <div key={p.id} className="break-inside-avoid-column">
+            <ParagraphBlock p={p} imageUrls={imageUrls} highlightRanges={highlightedPids.get(p.id) ?? []} />
             <CommentPopover
               threads={chapterThreads.filter((t) => t.paragraphId === p.id)}
               pending={pendingPids.includes(p.id)}

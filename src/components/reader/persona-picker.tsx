@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { UserCircle2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -13,12 +13,21 @@ interface PersonaPickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   personas: Persona[];
-  onConfirm: (personaIds: string[]) => void;
+  defaultPersonaIds: string[];
+  onConfirm: (mode: 'from_start' | 'to_end', personaIds: string[]) => void;
 }
 
-export function PersonaPicker({ open, onOpenChange, personas, onConfirm }: PersonaPickerProps) {
+export function PersonaPicker({ open, onOpenChange, personas, defaultPersonaIds, onConfirm }: PersonaPickerProps) {
   const { t } = useLang();
+  const [mode, setMode] = useState<'from_start' | 'to_end'>('from_start');
   const [selected, setSelected] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (open) {
+      setMode('from_start');
+      setSelected(defaultPersonaIds.filter(id => personas.some(p => p.id === id)));
+    }
+  }, [open, defaultPersonaIds, personas]);
 
   const toggle = (id: string) => {
     setSelected((prev) =>
@@ -31,6 +40,32 @@ export function PersonaPicker({ open, onOpenChange, personas, onConfirm }: Perso
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>{t('reader.sendChapterQuestion', { n: MAX_PERSONAS })}</DialogTitle>
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground">{t('reader.sendMode')}</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setMode('from_start')}
+                className={cn(
+                  'flex-1 rounded-md border px-3 py-2 text-xs font-medium transition-colors',
+                  mode === 'from_start' ? 'border-primary bg-accent text-foreground' : 'hover:bg-muted',
+                )}
+              >
+                {t('reader.fromStart')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('to_end')}
+                className={cn(
+                  'flex-1 rounded-md border px-3 py-2 text-xs font-medium transition-colors',
+                  mode === 'to_end' ? 'border-primary bg-accent text-foreground' : 'hover:bg-muted',
+                )}
+              >
+                {t('reader.toEnd')}
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">{t('reader.maxWords', { n: 7000 })}</p>
+          </div>
         </DialogHeader>
         <div className="space-y-2">
           {personas.length === 0 && (
@@ -62,7 +97,7 @@ export function PersonaPicker({ open, onOpenChange, personas, onConfirm }: Perso
         <DialogFooter>
           <Button
             disabled={selected.length === 0}
-            onClick={() => { onConfirm(selected); setSelected([]); }}
+            onClick={() => { onConfirm(mode, selected); setSelected([]); }}
           >
             {t('reader.sendBtnWithCount', { n: selected.length })}
           </Button>

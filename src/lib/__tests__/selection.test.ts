@@ -27,6 +27,10 @@ describe('resolveSelection', () => {
       { index: 0, pid: '0:0', text: 'First paragraph.' },
       { index: 1, pid: '0:1', text: 'Second paragraph here.' },
     ]);
+    expect(result.ranges).toEqual([
+      { pid: '0:0', start: 6, end: 16 },
+      { pid: '0:1', start: 0, end: 6 },
+    ]);
   });
 
   it('returns null for collapsed range or outside selection', () => {
@@ -39,5 +43,18 @@ describe('resolveSelection', () => {
     outside.selectNodeContents(document.body);
     const detached = document.createElement('div');
     expect(resolveSelection(outside, detached)).toBeNull();
+  });
+
+  it('returns full paragraph range for single-paragraph selection', () => {
+    const container = setup();
+    const range = document.createRange();
+    const p0 = container.querySelector('[data-pid="0:0"]')!.firstChild!;
+    range.setStart(p0, 0);
+    range.setEnd(p0, 5);
+    const result = resolveSelection(range, container)!;
+    expect(result.pids).toEqual(['0:0']);
+    expect(result.ranges).toEqual([
+      { pid: '0:0', start: 0, end: 5 },
+    ]);
   });
 });
