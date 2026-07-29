@@ -81,7 +81,8 @@ export function ReaderView({ book }: { book: Book }) {
         clearHideTimer();
         window.history.pushState(null, '', window.location.href);
       } else {
-        router.push('/');
+        window.removeEventListener('popstate', onPopState);
+        window.location.href = '/';
       }
     };
     window.addEventListener('popstate', onPopState);
@@ -266,14 +267,15 @@ export function ReaderView({ book }: { book: Book }) {
   const handleHighlight = useCallback(() => {
     if (!selection) return;
     setToolbarPos(null);
-    const pids = selection.pids;
-    for (const pid of pids) {
+    for (const r of selection.ranges) {
       addBookmark({
         bookId: book.id,
         chapterId,
-        paragraphId: pid,
+        paragraphId: r.pid,
         kind: 'highlight',
         text: selection.text,
+        startOffset: r.start,
+        endOffset: r.end,
       });
     }
     setSelection(null);
@@ -360,7 +362,17 @@ export function ReaderView({ book }: { book: Book }) {
   );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const highlightedPids = useMemo(() => new Set(listHighlights(book.id).map((h) => h.paragraphId)), [book.id, highlightsVersion]);
+  const highlightedPids = useMemo(() => {
+    const map = new Map<string, { start: number; end: number }[]>();
+    for (const h of listHighlights(book.id)) {
+      const arr = map.get(h.paragraphId) ?? [];
+      if (h.startOffset != null && h.endOffset != null) {
+        arr.push({ start: h.startOffset, end: h.endOffset });
+      }
+      map.set(h.paragraphId, arr);
+    }
+    return map;
+  }, [book.id, highlightsVersion]);
 
   return (
     <div className="relative h-screen w-full overflow-hidden">

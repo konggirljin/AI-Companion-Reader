@@ -16,14 +16,29 @@ export const PAGE_FLIP_EVENT = 'arc:page-flip';
 
 const GAP = 40;
 
-function ParagraphBlock({ p, imageUrls, highlighted }: { p: Paragraph; imageUrls: Map<string, string>; highlighted: boolean }) {
-  if (p.tag.startsWith('h')) {
-    const Tag = p.tag as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
-    return <Tag data-pid={p.id} className="mb-4 mt-8 font-semibold" style={highlighted ? { textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'hsl(var(--primary))', textUnderlineOffset: '4px' } : undefined}>{p.text}</Tag>;
+const HIGHLIGHT_STYLE: React.CSSProperties = { textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'hsl(var(--primary))', textUnderlineOffset: '4px' };
+
+function HighlightedText({ text, ranges }: { text: string; ranges: { start: number; end: number }[] }) {
+  if (!ranges.length) return <>{text}</>;
+  const sorted = [...ranges].sort((a, b) => a.start - b.start);
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+  for (const r of sorted) {
+    const s = Math.max(0, r.start);
+    const e = Math.min(text.length, r.end);
+    if (s > cursor) parts.push(<span key={`t${cursor}`}>{text.slice(cursor, s)}</span>);
+    if (e > s) parts.push(<span key={`h${s}`} style={HIGHLIGHT_STYLE}>{text.slice(s, e)}</span>);
+    cursor = e;
   }
-  return (
-    <p data-pid={p.id} className={p.tag === 'blockquote' ? 'mb-4 border-l-2 pl-4 italic' : 'mb-4'} style={highlighted ? { textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'hsl(var(--primary))', textUnderlineOffset: '4px' } : undefined}>
-      {p.text}
+  if (cursor < text.length) parts.push(<span key={`t${cursor}`}>{text.slice(cursor)}</span>);
+  return <>{parts}</>;
+}
+
+function ParagraphBlock({ p, imageUrls, highlightRanges }: { p: Paragraph; imageUrls: Map<string, string>; highlightRanges: { start: number; end: number }[] }) {
+  const hasHighlights = highlightRanges.length > 0;
+  const textContent = (
+    <>
+      <HighlightedText text={p.text} ranges={highlightRanges} />
       {p.images?.map((img) => {
         const url = imageUrls.get(img.path);
         return url ? (
@@ -31,6 +46,15 @@ function ParagraphBlock({ p, imageUrls, highlighted }: { p: Paragraph; imageUrls
           <img key={img.path} src={url} alt={img.alt ?? ''} className="my-3 max-h-[60vh] rounded-md object-contain" />
         ) : null;
       })}
+    </>
+  );
+  if (p.tag.startsWith('h')) {
+    const Tag = p.tag as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+    return <Tag data-pid={p.id} className="mb-4 mt-8 font-semibold" style={hasHighlights ? HIGHLIGHT_STYLE : undefined}>{textContent}</Tag>;
+  }
+  return (
+    <p data-pid={p.id} className={p.tag === 'blockquote' ? 'mb-4 border-l-2 pl-4 italic' : 'mb-4'}>
+      {textContent}
     </p>
   );
 }
@@ -55,7 +79,7 @@ interface PaginatedChapterProps {
   onSendChapterStart?: () => void;
   onToggleBars?: () => void;
   onInteraction?: () => void;
-  highlightedPids: Set<string>;
+  highlightedPids: Map<string, { start: number; end: number }[]>;
 }
 
 export function PaginatedChapter(props: PaginatedChapterProps) {
@@ -292,7 +316,7 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
       >
         {chapter.paragraphs.map((p) => (
           <div key={p.id} className="break-inside-avoid-column" onDoubleClick={() => onDoubleClickParagraph?.(p.id)}>
-            <ParagraphBlock p={p} imageUrls={imageUrls} highlighted={highlightedPids.has(p.id)} />
+            <ParagraphBlock p={p} imageUrls={imageUrls} highlightRanges={highlightedPids.get(p.id) ?? []} />
             <CommentPopover
               threads={chapterThreads.filter((t) => t.paragraphId === p.id)}
               pending={pendingPids.includes(p.id)}
