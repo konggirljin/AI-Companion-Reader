@@ -62,6 +62,8 @@ export interface Bookmark {
   createdAt: number;
   kind?: 'bookmark' | 'highlight';  // defaults to 'bookmark' for legacy entries
   text?: string;                     // selected text, only for kind='highlight'
+  startOffset?: number;             // character offset within paragraph text, for kind='highlight'
+  endOffset?: number;               // character offset within paragraph text, for kind='highlight'
 }
 
 export interface Settings {
