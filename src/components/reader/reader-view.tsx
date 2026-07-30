@@ -40,6 +40,7 @@ export function ReaderView({ book }: { book: Book }) {
 
   const restorePidRef = useRef<string | null>(book.progress?.paragraphId ?? null);
   const restorePageRef = useRef<number>(book.progress?.pageIndex ?? 0);
+  const goToLastPageRef = useRef(false);
   const [prefs, setPrefs] = useState<ReaderPrefs>(() => getPrefs());
   const [tocOpen, setTocOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
@@ -161,7 +162,7 @@ export function ReaderView({ book }: { book: Book }) {
     const next = idx + delta;
     if (next >= 0 && next < book.toc.length) {
       setChapterId(book.toc[next].chapterId);
-      setPageIndex(0);
+      if (delta < 0) { goToLastPageRef.current = true; } else { setPageIndex(0); }
     } else if (delta > 0 && next >= book.toc.length) {
       updateBookStatus(book.id, 'finished');
       toast.success(t('reader.finished'));
@@ -173,7 +174,12 @@ export function ReaderView({ book }: { book: Book }) {
 
   const handlePageCount = useCallback((n: number) => {
     setPageCount(n);
-    setPageIndex((i) => Math.min(i, Math.max(0, n - 1)));
+    if (goToLastPageRef.current) {
+      goToLastPageRef.current = false;
+      setPageIndex(Math.max(0, n - 1));
+    } else {
+      setPageIndex((i) => Math.min(i, Math.max(0, n - 1)));
+    }
   }, []);
 
   const handleFirstVisiblePid = useCallback((pid: string) => {
@@ -440,7 +446,7 @@ export function ReaderView({ book }: { book: Book }) {
         visible={barsVisible}
         paginated={prefs.readingMode === 'paginated'}
       />
-      <TocDrawer open={tocOpen} onOpenChange={setTocOpen} toc={book.toc} currentChapterId={chapterId} onSelect={(cid) => { window.scrollTo({ top: 0 }); setChapterId(cid); }} />
+      <TocDrawer open={tocOpen} onOpenChange={setTocOpen} toc={book.toc} currentChapterId={chapterId} onSelect={(cid) => { window.scrollTo({ top: 0 }); setPageIndex(0); setChapterId(cid); }} />
       <BookmarksPanel
         open={bookmarksOpen} onOpenChange={setBookmarksOpen} bookId={book.id}
         tocTitles={new Map(book.toc.map((t) => [t.chapterId, t.title]))}
