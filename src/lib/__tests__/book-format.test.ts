@@ -47,3 +47,30 @@ describe('detectBookFormat', () => {
       .rejects.toThrow('UNSUPPORTED_FILE_TYPE');
   });
 });
+
+describe('PDF detection', () => {
+  it('recognises PDF files by extension', async () => {
+    const data = new Uint8Array([0x25, 0x50, 0x44, 0x46]).buffer;
+    await expect(detectBookFormat({ name: 'book.pdf', type: '' }, data)).resolves.toBe('pdf');
+    await expect(detectBookFormat({ name: 'book.PDF', type: '' }, data)).resolves.toBe('pdf');
+  });
+
+  it('recognises PDF files by MIME type', async () => {
+    const data = new ArrayBuffer(4);
+    await expect(
+      detectBookFormat({ name: 'download', type: 'application/pdf' }, data),
+    ).resolves.toBe('pdf');
+  });
+
+  it('recognises PDF files by magic bytes (extensionless)', async () => {
+    const data = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34]).buffer;
+    await expect(detectBookFormat({ name: 'download.bin', type: 'application/octet-stream' }, data)).resolves.toBe('pdf');
+  });
+
+  it('does not falsely detect PDF from non-PDF magic bytes', async () => {
+    const data = new Uint8Array([0x50, 0x4b, 0x03, 0x04]).buffer;
+    await expect(
+      detectBookFormat({ name: 'notes.zip', type: 'application/zip' }, data),
+    ).rejects.toThrow('UNSUPPORTED_FILE_TYPE');
+  });
+});
