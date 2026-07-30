@@ -2,11 +2,23 @@ import type { Book, ParsedBook } from './types';
 import { parseEpub } from './epub';
 import { parseTxt } from './txt';
 import { idbDelMany, idbKeys, idbSet } from './storage/idb';
-import { createBook } from './storage/books';
+import { createBook, listBooks } from './storage/books';
 import { detectBookFormat } from './book-format';
+
+async function fingerprintFile(file: File, data: ArrayBuffer): Promise<string> {
+  if (globalThis.crypto?.subtle) {
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  }
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
 
 export async function importBook(file: File): Promise<Book> {
   const data = await file.arrayBuffer();
+  const sourceFingerprint = await fingerprintFile(file, data);
+  if (listBooks().some((book) => book.sourceFingerprint === sourceFingerprint)) {
+    throw new Error('DUPLICATE_BOOK');
+  }
   const format = await detectBookFormat(file, data);
   const parsed: ParsedBook = format === 'epub' ? await parseEpub(data) : await parseTxt(data, file.name);
 
@@ -37,6 +49,7 @@ export async function importBook(file: File): Promise<Book> {
     coverRef: parsed.cover ? idbKeys.cover(bookId) : undefined,
     toc: parsed.toc,
     chapterCount: parsed.chapters.length,
+    sourceFingerprint,
     progress: undefined,
   });
 }

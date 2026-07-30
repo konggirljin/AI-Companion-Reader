@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Book, NumberedParagraph, ParsedChapter, Persona, ReaderPrefs, Thread } from '@/lib/types';
+import type { Book, NumberedParagraph, ParsedChapter, Persona, ReaderPrefs, Thread, ThreadComment } from '@/lib/types';
 import { idbGet, idbKeys } from '@/lib/storage/idb';
 import { saveProgress, updateBookStatus } from '@/lib/storage/books';
 import { useReadingSession } from '@/lib/use-reading-session';
@@ -15,9 +15,9 @@ import { addBookmark, listHighlights } from '@/lib/storage/bookmarks';
 import { listPersonas } from '@/lib/storage/personas';
 import { getSettings } from '@/lib/storage/settings';
 import { useLang } from '@/lib/lang-context';
-import { addThreads, listThreads } from '@/lib/storage/threads';
+import { addThreads, appendThreadComments, listThreads } from '@/lib/storage/threads';
 
-import { sendToPersonas } from '@/lib/ai';
+import { continueWithPersona, sendToPersonas } from '@/lib/ai';
 import { countWords } from '@/lib/word-count';
 import type { ResolvedSelection } from '@/lib/selection';
 import { ReaderTopbar } from './reader-topbar';
@@ -93,6 +93,8 @@ export function ReaderView({ book }: { book: Book }) {
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [sending, setSending] = useState(false);
   const [pendingPids, setPendingPids] = useState<string[]>([]);
+  const [replyingThreadId, setReplyingThreadId] = useState<string | null>(null);
+  const replyInFlightRef = useRef(false);
   const [threadsVersion, setThreadsVersion] = useState(0);
   const [highlightsVersion, setHighlightsVersion] = useState(0);
   const [personas, setPersonas] = useState<Persona[]>([]);
@@ -316,12 +318,12 @@ export function ReaderView({ book }: { book: Book }) {
 
     try {
       const comments = await sendToPersonas(excerpt, chosen, settings, userPersona);
-      const byPid = new Map<string, { personaId: string; text: string }[]>();
+      const byPid = new Map<string, ThreadComment[]>();
       for (const c of comments) {
         const para = excerpt[c.paragraphIndex];
         if (!para) continue;
         const arr = byPid.get(para.pid) ?? [];
-        arr.push({ personaId: c.personaId, text: c.text });
+        arr.push({ personaId: c.personaId, role: 'persona', text: c.text, createdAt: Date.now() });
         byPid.set(para.pid, arr);
       }
       const threads: Thread[] = Array.from(byPid.entries()).map(([pid, threadComments]) => ({
@@ -360,14 +362,61 @@ export function ReaderView({ book }: { book: Book }) {
     }
   }, [selection, chapter, personas, book.id, chapterId, router, t]);
 
+  const handleContinueThread = useCallback(async (threadId: string, personaId: string, question: string): Promise<boolean> => {
+    if (replyInFlightRef.current) return false;
+    const settings = getSettings();
+    if (!settings.apiKey) {
+      toast.error(t('reader.setupAi'));
+      router.push('/settings');
+      return false;
+    }
+    const thread = listThreads(book.id).find((candidate) => candidate.id === threadId);
+    const persona = personas.find((candidate) => candidate.id === personaId);
+    if (!thread || !persona) return false;
+
+    let userPersona: UserPersona | undefined;
+    const activeId = getActiveUserPersonaId();
+    if (activeId) userPersona = getUserPersona(activeId);
+
+    replyInFlightRef.current = true;
+    setReplyingThreadId(threadId);
+    try {
+      const answer = await continueWithPersona(thread, persona, question, settings, userPersona);
+      const now = Date.now();
+      appendThreadComments(threadId, [
+        { role: 'user', text: question, createdAt: now },
+        { role: 'persona', personaId: persona.id, text: answer, createdAt: now + 1 },
+      ]);
+      setThreadsVersion((version) => version + 1);
+      toast.success(t('reader.replyAdded', { name: persona.name }));
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      const friendly =
+        msg === 'CORS_NETWORK_ERROR' ? t('reader.error.cors')
+        : msg === 'TIMEOUT' ? t('reader.error.timeout')
+        : msg.startsWith('API_ERROR_429') ? t('reader.error.rateLimit')
+        : msg === 'API_ERROR_503' ? t('reader.error.overloaded')
+        : msg.startsWith('API_ERROR_') ? t('reader.error.provider', { msg: msg.replace('API_ERROR_', '') })
+        : msg === 'API_BAD_RESPONSE' ? t('reader.error.distracted')
+        : t('reader.error.network');
+      toast.error(friendly);
+      return false;
+    } finally {
+      replyInFlightRef.current = false;
+      setReplyingThreadId(null);
+    }
+  }, [book.id, personas, router, t]);
+
   const chapterThreads = useMemo(
     () => listThreads(book.id, chapterId),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [book.id, chapterId, threadsVersion],
   );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const highlightedPids = useMemo(() => {
+    // The version is an explicit invalidation token for localStorage-backed highlights.
+    void highlightsVersion;
     const map = new Map<string, { start: number; end: number }[]>();
     for (const h of listHighlights(book.id)) {
       const arr = map.get(h.paragraphId) ?? [];
@@ -420,6 +469,8 @@ export function ReaderView({ book }: { book: Book }) {
           chapterThreads={chapterThreads}
           pendingPids={pendingPids}
           personas={personas}
+          replyingThreadId={replyingThreadId}
+          onContinueThread={handleContinueThread}
           registerSelectionContainer={() => {}}
           onSelectionResolve={setSelection}
           onToolbarPos={(pos) => setToolbarPos(pos && !sending ? pos : null)}

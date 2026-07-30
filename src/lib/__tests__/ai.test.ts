@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { extractJson, sendToPersonas } from '@/lib/ai';
-import type { NumberedParagraph, Persona, Settings, UserPersona } from '@/lib/types';
+import { continueWithPersona, extractJson, sendToPersonas } from '@/lib/ai';
+import type { NumberedParagraph, Persona, Settings, Thread, UserPersona } from '@/lib/types';
 
 const settings: Settings = { baseUrl: 'https://api.test/v1', apiKey: 'k', model: 'm', systemPromptTemplate: 'P: {{personas}}', proxyUrl: '', language: 'en' };
 const persona: Persona = { id: 'p1', name: 'Holmes', avatar: '', characterDescription: 'witty', language: 'English', isDefault: false, createdAt: 0 };
@@ -94,5 +94,60 @@ describe('sendToPersonas', () => {
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     expect(body.messages[0].content).toContain('The reader you are conversing with');
     expect(body.messages[0].content).toContain('Alice');
+  });
+});
+
+describe('continueWithPersona', () => {
+  it('keeps the passage and the selected companion conversation in context', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(apiResponse('Because the detail is suspicious.'));
+    vi.stubGlobal('fetch', fetchMock);
+    const thread: Thread = {
+      id: 't1',
+      bookId: 'b1',
+      chapterId: '0',
+      paragraphId: '0:0',
+      selectedText: 'The door was locked from the inside.',
+      comments: [
+        { personaId: 'p1', text: 'That lock is the key clue.' },
+        { role: 'user', text: 'What makes it important?' },
+      ],
+      createdAt: 1,
+    };
+
+    await expect(continueWithPersona(thread, persona, 'Could it be staged?', settings))
+      .resolves.toBe('Because the detail is suspicious.');
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.messages[0].content).toContain('Holmes');
+    expect(body.messages[1].content).toContain('The door was locked');
+    expect(body.messages.at(-1).content).toBe('Could it be staged?');
+  });
+
+  it('keeps only the selected companion and the latest 12 conversation messages', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(apiResponse('A focused answer.'));
+    vi.stubGlobal('fetch', fetchMock);
+    const comments: Thread['comments'] = [
+      { personaId: 'other', role: 'persona', text: 'Ignore this companion.' },
+      ...Array.from({ length: 14 }, (_, index) => (
+        index % 2 === 0
+          ? { role: 'user' as const, text: `Question ${index}` }
+          : { personaId: 'p1', role: 'persona' as const, text: `Answer ${index}` }
+      )),
+    ];
+    const thread: Thread = {
+      id: 't2',
+      bookId: 'b1',
+      chapterId: '0',
+      paragraphId: '0:1',
+      selectedText: 'A short passage.',
+      comments,
+      createdAt: 1,
+    };
+
+    await continueWithPersona(thread, persona, 'One more question?', settings);
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    const history = body.messages.slice(2, -1);
+    expect(history).toHaveLength(12);
+    expect(history.map((message: { content: string }) => message.content)).not.toContain('Ignore this companion.');
+    expect(history[0].content).toBe('Question 2');
   });
 });

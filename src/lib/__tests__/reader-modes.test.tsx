@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { PaginatedChapter } from '@/components/reader/paginated-chapter';
+import { LanguageProvider } from '@/lib/lang-context';
 import type { ReaderPrefs } from '@/lib/types';
 
 const chapter = {
@@ -21,23 +22,27 @@ const basePrefs: ReaderPrefs = {
 
 function renderReader(prefs: ReaderPrefs): string {
   return renderToStaticMarkup(
-    <PaginatedChapter
-      chapter={chapter}
-      imageUrls={new Map()}
-      prefs={prefs}
-      pageIndex={1}
-      pageCount={3}
-      onPageCountChange={() => {}}
-      onFirstVisiblePidChange={() => {}}
-      chapterThreads={[]}
-      pendingPids={[]}
-      personas={[]}
-      registerSelectionContainer={() => {}}
-      onSelectionResolve={() => {}}
-      onToolbarPos={() => {}}
-      registerBackNav={() => {}}
-      highlightedPids={new Map()}
-    />,
+    <LanguageProvider>
+      <PaginatedChapter
+        chapter={chapter}
+        imageUrls={new Map()}
+        prefs={prefs}
+        pageIndex={1}
+        pageCount={3}
+        onPageCountChange={() => {}}
+        onFirstVisiblePidChange={() => {}}
+        chapterThreads={[]}
+        pendingPids={[]}
+        personas={[]}
+        replyingThreadId={null}
+        onContinueThread={async () => false}
+        registerSelectionContainer={() => {}}
+        onSelectionResolve={() => {}}
+        onToolbarPos={() => {}}
+        registerBackNav={() => {}}
+        highlightedPids={new Map()}
+      />
+    </LanguageProvider>,
   );
 }
 
