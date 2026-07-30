@@ -35,6 +35,7 @@ export function ImportButton({ onImported }: { onImported: () => void }) {
       <input
         ref={inputRef}
         type="file"
+        accept=".epub,.txt,.pdf"
         className="hidden"
         onChange={(e) => void handleFile(e.target.files?.[0])}
       />

@@ -1,5 +1,6 @@
 import type { Book, ParsedBook } from './types';
 import { parseEpub } from './epub';
+import { parsePdf } from './pdf';
 import { parseTxt } from './txt';
 import { idbDelMany, idbKeys, idbSet } from './storage/idb';
 import { createBook } from './storage/books';
@@ -8,7 +9,9 @@ import { detectBookFormat } from './book-format';
 export async function importBook(file: File): Promise<Book> {
   const data = await file.arrayBuffer();
   const format = await detectBookFormat(file, data);
-  const parsed: ParsedBook = format === 'epub' ? await parseEpub(data) : await parseTxt(data, file.name);
+  const parsed: ParsedBook = format === 'epub' ? await parseEpub(data)
+    : format === 'pdf' ? await parsePdf(data)
+    : await parseTxt(data, file.name);
 
   const bookId = crypto.randomUUID();
   const writtenKeys: string[] = [];
