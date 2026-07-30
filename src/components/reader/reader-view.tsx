@@ -1,9 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BookmarkPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Book, NumberedParagraph, ParsedChapter, Persona, ReaderPrefs, Thread } from '@/lib/types';
 import { idbGet, idbKeys } from '@/lib/storage/idb';
@@ -24,9 +22,10 @@ import { ReaderTopbar } from './reader-topbar';
 import { TocDrawer } from './toc-drawer';
 import { BookmarksPanel } from './bookmarks-panel';
 import { CommentsDrawer } from './comments-drawer';
-import { SelectionToolbar } from './selection-toolbar';
-import { PersonaPicker } from './persona-picker';
 import { PaginatedChapter, PAGE_FLIP_EVENT } from './paginated-chapter';
+import { ReaderBottomBar } from './reader-bottom-bar';
+import { PersonaPicker } from './persona-picker';
+import { SelectionToolbar } from './selection-toolbar';
 import { getActiveUserPersonaId, getUserPersona } from '@/lib/storage/user-personas';
 import type { UserPersona } from '@/lib/types';
 
@@ -154,18 +153,20 @@ export function ReaderView({ book }: { book: Book }) {
 
 
 
-  const chapterIndex = Number(chapterId);
+
   const goChapter = useCallback((delta: number) => {
     resetHideTimer();
-    const next = chapterIndex + delta;
-    if (next >= 0 && next < book.chapterCount) {
-      setChapterId(String(next));
+    const idx = book.toc.findIndex(e => e.chapterId === chapterId);
+    if (idx === -1) return;
+    const next = idx + delta;
+    if (next >= 0 && next < book.toc.length) {
+      setChapterId(book.toc[next].chapterId);
       setPageIndex(0);
-    } else if (delta > 0 && next >= book.chapterCount) {
+    } else if (delta > 0 && next >= book.toc.length) {
       updateBookStatus(book.id, 'finished');
       toast.success(t('reader.finished'));
     }
-  }, [chapterIndex, book.chapterCount, book.id, resetHideTimer, t]);
+  }, [book.toc, book.id, chapterId, resetHideTimer, t]);
 
   const firstVisiblePidRef = useRef<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -430,20 +431,15 @@ export function ReaderView({ book }: { book: Book }) {
         />
         </div>
       )}
-      {/* Chapter footer nav uses page-flip */}
-      {book.chapterCount > 1 && (
-        <div
-          className={`absolute bottom-0 left-0 right-0 z-50 transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-          onPointerDown={resetHideTimer}
-        >
-          <div className="mx-auto w-full max-w-2xl px-5 pb-4 flex items-center justify-center">
-          <span className="text-xs" style={{ color: 'var(--reader-muted, #8A6038)' }}>
-            {prefs.readingMode === 'paginated' ? `${pageIndex + 1} / ${pageCount} · ` : ''}
-            Ch {chapterIndex + 1}/{book.chapterCount}
-          </span>
-          </div>
-        </div>
-      )}
+      <ReaderBottomBar
+        pageIndex={pageIndex}
+        pageCount={pageCount}
+        onPageIndexChange={(i) => { setPageIndex(i); resetHideTimer(); }}
+        onBookmark={addBookmarkHere}
+        onInteraction={resetHideTimer}
+        visible={barsVisible}
+        paginated={prefs.readingMode === 'paginated'}
+      />
       <TocDrawer open={tocOpen} onOpenChange={setTocOpen} toc={book.toc} currentChapterId={chapterId} onSelect={(cid) => { window.scrollTo({ top: 0 }); setChapterId(cid); }} />
       <BookmarksPanel
         open={bookmarksOpen} onOpenChange={setBookmarksOpen} bookId={book.id}
@@ -458,18 +454,6 @@ export function ReaderView({ book }: { book: Book }) {
         tocTitles={new Map(book.toc.map((t) => [t.chapterId, t.title]))}
         onJump={jumpTo}
       />
-      <div
-        className={`fixed bottom-6 right-6 z-40 transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        onPointerDown={resetHideTimer}
-      >
-        <Button
-          variant="secondary" size="icon"
-          className="h-11 w-11 rounded-full shadow-lg"
-          onClick={addBookmarkHere} aria-label={t('reader.bookmarkHere')}
-        >
-          <BookmarkPlus className="h-5 w-5" />
-        </Button>
-      </div>
       <SelectionToolbar position={toolbarPos && !sending ? toolbarPos : null} onOpenSendDialog={() => setSendModeOpen(true)} onHighlight={handleHighlight} />
       <PersonaPicker
         open={sendModeOpen}
