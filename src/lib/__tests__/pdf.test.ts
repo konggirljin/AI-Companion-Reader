@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 vi.mock('pdfjs-dist', () => {
   const createMockDoc = (numPages: number, pageItems: Array<Array<{ str: string; transform: number[]; width: number; height: number; fontName: string }>>, metadata: Record<string, unknown>) => ({
     numPages,
-    promise: undefined,
+    promise: undefined as unknown as Promise<any>,
     getPage: vi.fn((i: number) => {
       const items = pageItems[i - 1] || [];
       return {
