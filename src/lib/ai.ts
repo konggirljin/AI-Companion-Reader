@@ -1,4 +1,4 @@
-import type { AIComment, NumberedParagraph, Persona, Settings, UserPersona } from './types';
+import type { AIComment, NumberedParagraph, Persona, Settings, Thread, UserPersona } from './types';
 import { renderSystemPrompt } from './prompts';
 
 const TIMEOUT_MS = 60_000;
@@ -91,4 +91,39 @@ export async function sendToPersonas(
     ]);
     return extractJson(retry);
   }
+}
+
+export async function continueWithPersona(
+  thread: Thread,
+  persona: Persona,
+  question: string,
+  settings: Settings,
+  userPersona?: UserPersona,
+): Promise<string> {
+  const readerContext = userPersona
+    ? `\nThe reader is ${userPersona.name}. Their personality is: ${userPersona.personality}`
+    : '';
+  const system = `You are ${persona.name}, the user's reading companion.
+Stay fully in character using this description: ${persona.characterDescription}
+Reply naturally in ${persona.language}. Answer the user's follow-up about the book passage.
+Do not return JSON and do not mention being an AI.${readerContext}`;
+  const passage = thread.selectedText.length > 12_000
+    ? `…${thread.selectedText.slice(-12_000)}`
+    : thread.selectedText;
+  const history: ChatMessage[] = thread.comments
+    .filter((comment) => comment.role === 'user' || comment.personaId === persona.id)
+    .slice(-12)
+    .map((comment) => ({
+      role: comment.role === 'user' ? 'user' : 'assistant',
+      content: comment.text,
+    }));
+  const answer = await callChat(settings, [
+    { role: 'system', content: system },
+    { role: 'user', content: `Book passage:\n\n${passage}` },
+    ...history,
+    { role: 'user', content: question.trim() },
+  ]);
+  const trimmed = answer.trim();
+  if (!trimmed) throw new Error('API_BAD_RESPONSE');
+  return trimmed;
 }

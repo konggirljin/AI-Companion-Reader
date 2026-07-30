@@ -74,6 +74,8 @@ interface PaginatedChapterProps {
   chapterThreads: Thread[];
   pendingPids: string[];
   personas: Persona[];
+  replyingThreadId: string | null;
+  onContinueThread: (threadId: string, personaId: string, question: string) => Promise<boolean>;
   registerSelectionContainer: (el: HTMLDivElement | null) => void;
   onSelectionResolve: (resolved: ResolvedSelection | null) => void;
   onToolbarPos: (pos: { x: number; y: number } | null) => void;
@@ -85,7 +87,7 @@ interface PaginatedChapterProps {
 
 export function PaginatedChapter(props: PaginatedChapterProps) {
   const { chapter, imageUrls, prefs, pageIndex, pageCount, onPageCountChange, onFirstVisiblePidChange,
-    chapterThreads, pendingPids, personas, registerSelectionContainer, onSelectionResolve,
+    chapterThreads, pendingPids, personas, replyingThreadId, onContinueThread, registerSelectionContainer, onSelectionResolve,
     onToolbarPos, registerBackNav, onOpenSettings, onInteraction,
     highlightedPids } = props;
 
@@ -323,6 +325,8 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
               threads={chapterThreads.filter((t) => t.paragraphId === p.id)}
               pending={pendingPids.includes(p.id)}
               personas={personas}
+              replyingThreadId={replyingThreadId}
+              onContinue={onContinueThread}
             />
           </div>
         ))}
