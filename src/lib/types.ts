@@ -23,7 +23,7 @@ export interface Book {
   id: string;
   title: string;
   author: string;
-  format: 'epub' | 'txt';
+  format: 'epub' | 'txt' | 'pdf';
   coverRef?: string;          // idb key
   toc: TocEntry[];
   addedAt: number;
