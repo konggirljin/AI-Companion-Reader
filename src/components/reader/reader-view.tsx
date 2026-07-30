@@ -208,14 +208,13 @@ export function ReaderView({ book }: { book: Book }) {
   };
 
   const handleOpenSettings = useCallback(() => {
-    if (settingsOpen) {
-      setSettingsOpen(false);
+    if (barsVisible) {
+      setBarsVisible(false);
     } else {
       setBarsVisible(true);
-      setSettingsOpen(true);
       clearHideTimer();
     }
-  }, [settingsOpen, clearHideTimer]);
+  }, [barsVisible, clearHideTimer]);
 
   const jumpTo = (targetChapterId: string, paragraphId: string) => {
     if (targetChapterId === chapterId) {
