@@ -24,11 +24,13 @@ export interface Book {
   title: string;
   author: string;
   format: 'epub' | 'txt' | 'pdf';
+  pdfMode?: 'native' | 'text';
   coverRef?: string;          // idb key
   toc: TocEntry[];
   addedAt: number;
   order: number;
   chapterCount: number;
+  pageCount?: number;
   status?: 'favorites' | 'toRead' | 'finished';
   progress?: { chapterId: string; paragraphId: string; pageIndex: number };
 }

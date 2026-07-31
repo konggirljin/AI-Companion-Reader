@@ -123,6 +123,37 @@ function detectChapters(allPagesParagraphs: Paragraph[][]): ParsedChapter[] {
   return chapters;
 }
 
+export async function getPdfPageCount(data: ArrayBuffer): Promise<number> {
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(data) }).promise;
+  return doc.numPages;
+}
+
+export async function getPdfMeta(data: ArrayBuffer): Promise<{ title: string; author: string; pageCount: number; cover?: Blob }> {
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(data) }).promise;
+  let title = '';
+  let author = '';
+
+  try {
+    const metadata = await doc.getMetadata();
+    const info = metadata.info as Record<string, unknown> | null;
+    if (info) {
+      title = String(info.Title || '');
+      author = String(info.Author || '');
+    }
+  } catch {
+    // metadata may be unavailable
+  }
+
+  const cover = await renderCover(doc);
+
+  return {
+    title: title || 'Untitled PDF',
+    author: author || 'Unknown',
+    pageCount: doc.numPages,
+    cover,
+  };
+}
+
 async function renderCover(doc: pdfjsLib.PDFDocumentProxy): Promise<Blob | undefined> {
   try {
     const page = await doc.getPage(1);
@@ -145,7 +176,7 @@ async function renderCover(doc: pdfjsLib.PDFDocumentProxy): Promise<Blob | undef
 }
 
 export async function parsePdf(data: ArrayBuffer): Promise<ParsedBook> {
-  const doc = await pdfjsLib.getDocument({ data }).promise;
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(data) }).promise;
   const allPagesParagraphs: Paragraph[][] = [];
   let title = '';
   let author = '';

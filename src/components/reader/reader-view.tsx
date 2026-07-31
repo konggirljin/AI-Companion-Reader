@@ -3,6 +3,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
 import type { Book, NumberedParagraph, ParsedChapter, Persona, ReaderPrefs, Thread } from '@/lib/types';
 import { idbGet, idbKeys } from '@/lib/storage/idb';
 import { saveProgress, updateBookStatus } from '@/lib/storage/books';
@@ -23,6 +26,7 @@ import { TocDrawer } from './toc-drawer';
 import { BookmarksPanel } from './bookmarks-panel';
 import { CommentsDrawer } from './comments-drawer';
 import { PaginatedChapter, PAGE_FLIP_EVENT } from './paginated-chapter';
+import { PdfNativeReader } from './pdf-native-reader';
 import { ReaderBottomBar } from './reader-bottom-bar';
 import { PersonaPicker } from './persona-picker';
 import { SelectionToolbar } from './selection-toolbar';
@@ -35,6 +39,11 @@ export function ReaderView({ book }: { book: Book }) {
   const router = useRouter();
   const { t } = useLang();
   useReadingSession(book.id);
+
+  if (book.pdfMode === 'native') {
+    return <PdfNativeReaderView book={book} />;
+  }
+
   const [chapterId, setChapterId] = useState<string>(book.progress?.chapterId ?? book.toc[0]?.chapterId ?? '0');
   const [chapter, setChapter] = useState<ParsedChapter | null>(null);
 
@@ -468,6 +477,99 @@ export function ReaderView({ book }: { book: Book }) {
         defaultPersonaIds={defaultPersonaIds}
         onConfirm={(mode, ids) => void handleSendWithMode(mode, ids)}
       />
+    </div>
+  );
+}
+
+function PdfNativeReaderView({ book }: { book: Book }) {
+  const { t } = useLang();
+  const [pageIndex, setPageIndex] = useState(book.progress?.pageIndex ?? 0);
+  const [barsVisible, setBarsVisible] = useState(false);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearHideTimer = useCallback(() => {
+    if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
+  }, []);
+
+  const resetHideTimer = useCallback(() => {
+    clearHideTimer();
+    if (barsVisible) {
+      hideTimerRef.current = setTimeout(() => setBarsVisible(false), 5000);
+    }
+  }, [barsVisible, clearHideTimer]);
+
+  useEffect(() => {
+    if (barsVisible) resetHideTimer();
+    return () => clearHideTimer();
+  }, [barsVisible, resetHideTimer, clearHideTimer]);
+
+  const toggleBars = useCallback(() => {
+    if (barsVisible) {
+      setBarsVisible(false);
+      clearHideTimer();
+    } else {
+      setBarsVisible(true);
+    }
+  }, [barsVisible, clearHideTimer]);
+
+  const totalPages = book.pageCount ?? 0;
+
+  return (
+    <div className="relative h-screen w-full overflow-hidden">
+      <div
+        className={`absolute left-0 right-0 top-0 z-50 transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onPointerDown={resetHideTimer}
+      >
+        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
+          <div className="mx-auto flex h-12 max-w-2xl items-center justify-between px-2">
+            <Button variant="ghost" size="icon" asChild aria-label={t('reader.backToShelf')}>
+              <Link href="/"><ChevronLeft className="h-5 w-5" /></Link>
+            </Button>
+            <p className="mx-2 flex-1 truncate text-center text-sm font-medium">{book.title}</p>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground px-1">{t('reader.pdfNoCompanion')}</span>
+            </div>
+          </div>
+        </header>
+      </div>
+
+      <div className="h-full" onClick={toggleBars}>
+        <PdfNativeReader
+          bookId={book.id}
+          pageCount={totalPages}
+          onPageChange={(page) => setPageIndex(page - 1)}
+        />
+      </div>
+
+      <div
+        className={`absolute bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onPointerDown={resetHideTimer}
+      >
+        <div className="mx-auto w-full max-w-2xl px-5 pb-2 pt-1.5">
+          <div className="grid grid-cols-3 items-center">
+            <div />
+            <span className="text-center text-xs text-foreground">
+              {t('reader.pdfPage', { page: pageIndex + 1, total: totalPages })}
+            </span>
+            <div />
+          </div>
+          {totalPages > 1 && (
+            <input
+              type="range"
+              min={0}
+              max={totalPages - 1}
+              value={pageIndex}
+              onChange={(e) => setPageIndex(Number(e.target.value))}
+              className="w-full h-1 mt-1 appearance-none rounded-full cursor-pointer"
+              style={{
+                background: 'var(--reader-muted, #8A6038)',
+                opacity: 0.3,
+                accentColor: 'var(--reader-muted, #8A6038)',
+              }}
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

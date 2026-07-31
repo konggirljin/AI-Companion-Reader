@@ -150,6 +150,14 @@ const STRINGS: Record<string, { en: string; 'zh-TW': string }> = {
   'bookshelf.importing': { en: 'Importing…', 'zh-TW': '匯入中…' },
   'bookshelf.import': { en: 'Import book', 'zh-TW': '匯入書籍' },
   'bookshelf.menu': { en: 'Book menu', 'zh-TW': '書籍選單' },
+  'bookshelf.pdfMode.title': { en: 'Import PDF as', 'zh-TW': '匯入 PDF 方式' },
+  'bookshelf.pdfMode.native': { en: 'Original PDF', 'zh-TW': '原始 PDF' },
+  'bookshelf.pdfMode.nativeDesc': { en: 'View pages as-is. No text selection or companion reading.', 'zh-TW': '以原始頁面檢視，不支援文字選取或伴讀功能。' },
+  'bookshelf.pdfMode.text': { en: 'Extract text', 'zh-TW': '擷取文字' },
+  'bookshelf.pdfMode.textDesc': { en: 'Convert to text for full companion and bookmark support.', 'zh-TW': '轉換為純文字，支援伴讀與書籤功能。' },
+
+  'reader.pdfPage': { en: 'Page {page} / {total}', 'zh-TW': '第 {page} / {total} 頁' },
+  'reader.pdfNoCompanion': { en: 'Companion reading is not available for original PDF mode', 'zh-TW': '原始 PDF 模式不支援伴讀功能' },
 
   'persona.title': { en: 'Persona', 'zh-TW': '角色' },
   'persona.subtitle': { en: 'Your reading companions', 'zh-TW': '你的閲讀夥伴' },

@@ -4,18 +4,23 @@ import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLang } from '@/lib/lang-context';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { importBook } from '@/lib/import-book';
+import { detectBookFormat } from '@/lib/book-format';
 
 export function ImportButton({ onImported }: { onImported: () => void }) {
   const { t } = useLang();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-  const handleFile = async (file: File | undefined) => {
+  const doImport = async (mode?: 'native' | 'text') => {
+    const file = pendingFile;
     if (!file) return;
+    setPendingFile(null);
     setBusy(true);
     try {
-      const book = await importBook(file);
+      const book = await importBook(file, mode);
       toast.success(t('bookshelf.imported', { title: book.title }));
       onImported();
     } catch (err) {
@@ -26,6 +31,23 @@ export function ImportButton({ onImported }: { onImported: () => void }) {
       else toast.error(t('bookshelf.importFailed'));
     } finally {
       setBusy(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const data = await file.arrayBuffer();
+      const format = await detectBookFormat(file, data);
+      if (format === 'pdf') {
+        setPendingFile(file);
+      } else {
+        setPendingFile(file);
+        doImport();
+      }
+    } catch {
+      toast.error(t('bookshelf.unsupportedFormat'));
       if (inputRef.current) inputRef.current.value = '';
     }
   };
@@ -43,6 +65,30 @@ export function ImportButton({ onImported }: { onImported: () => void }) {
         <Plus className="mr-1.5 h-4 w-4" />
         {busy ? t('bookshelf.importing') : t('bookshelf.import')}
       </Button>
+
+      <Dialog open={Boolean(pendingFile)} onOpenChange={(open) => { if (!open) setPendingFile(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{t('bookshelf.pdfMode.title')}</DialogTitle></DialogHeader>
+          <div className="flex flex-col gap-3">
+            <Button
+              variant="outline"
+              className="h-auto flex-col items-start gap-1 p-4"
+              onClick={() => doImport('native')}
+            >
+              <span className="font-semibold">{t('bookshelf.pdfMode.native')}</span>
+              <span className="text-xs text-muted-foreground whitespace-normal text-left">{t('bookshelf.pdfMode.nativeDesc')}</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto flex-col items-start gap-1 p-4"
+              onClick={() => doImport('text')}
+            >
+              <span className="font-semibold">{t('bookshelf.pdfMode.text')}</span>
+              <span className="text-xs text-muted-foreground whitespace-normal text-left">{t('bookshelf.pdfMode.textDesc')}</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
