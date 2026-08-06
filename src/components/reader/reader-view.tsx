@@ -36,13 +36,16 @@ import type { UserPersona } from '@/lib/types';
 
 
 export function ReaderView({ book }: { book: Book }) {
-  const router = useRouter();
-  const { t } = useLang();
-  useReadingSession(book.id);
-
   if (book.pdfMode === 'native') {
     return <PdfNativeReaderView book={book} />;
   }
+  return <EpubReader book={book} />;
+}
+
+function EpubReader({ book }: { book: Book }) {
+  const router = useRouter();
+  const { t } = useLang();
+  useReadingSession(book.id);
 
   const [chapterId, setChapterId] = useState<string>(book.progress?.chapterId ?? book.toc[0]?.chapterId ?? '0');
   const [chapter, setChapter] = useState<ParsedChapter | null>(null);

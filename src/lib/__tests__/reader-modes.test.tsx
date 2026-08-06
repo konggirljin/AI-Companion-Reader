@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { LanguageProvider } from '@/lib/lang-context';
 import { PaginatedChapter } from '@/components/reader/paginated-chapter';
 import type { ReaderPrefs } from '@/lib/types';
 
@@ -21,7 +22,8 @@ const basePrefs: ReaderPrefs = {
 
 function renderReader(prefs: ReaderPrefs): string {
   return renderToStaticMarkup(
-    <PaginatedChapter
+    <LanguageProvider>
+      <PaginatedChapter
       chapter={chapter}
       imageUrls={new Map()}
       prefs={prefs}
@@ -37,7 +39,8 @@ function renderReader(prefs: ReaderPrefs): string {
       onToolbarPos={() => {}}
       registerBackNav={() => {}}
       highlightedPids={new Map()}
-    />,
+      />
+    </LanguageProvider>,
   );
 }
 
