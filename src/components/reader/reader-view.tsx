@@ -400,6 +400,21 @@ export function ReaderView({ book }: { book: Book }) {
     [personas],
   );
 
+  // Which TOC subsection (anchor) is currently in view — only that entry should highlight.
+  const currentTocAnchorPid = () => {
+    if (!chapter) return null;
+    const visiblePid = firstVisiblePidRef.current;
+    const visibleIdx = visiblePid ? chapter.paragraphs.findIndex((p) => p.id === visiblePid) : -1;
+    let current: string | null = null;
+    for (const entry of book.toc) {
+      if (entry.chapterId === chapterId && entry.anchorPid) {
+        const idx = chapter.paragraphs.findIndex((p) => p.id === entry.anchorPid);
+        if (idx !== -1 && (visibleIdx === -1 || idx <= visibleIdx)) current = entry.anchorPid;
+      }
+    }
+    return current;
+  };
+
   return (
     <div className="relative h-screen w-full overflow-hidden">
       <div
@@ -455,7 +470,23 @@ export function ReaderView({ book }: { book: Book }) {
         visible={barsVisible}
         paginated={prefs.readingMode === 'paginated'}
       />
-      <TocDrawer open={tocOpen} onOpenChange={setTocOpen} toc={book.toc} currentChapterId={chapterId} onSelect={(cid) => { window.scrollTo({ top: 0 }); setPageIndex(0); setChapterId(cid); }} />
+      <TocDrawer
+        open={tocOpen}
+        onOpenChange={setTocOpen}
+        toc={book.toc}
+        currentChapterId={chapterId}
+        currentAnchorPid={currentTocAnchorPid()}
+        onSelect={(entry) => {
+          window.scrollTo({ top: 0 });
+          if (entry.anchorPid) {
+            firstVisiblePidRef.current = entry.anchorPid;
+            jumpTo(entry.chapterId, entry.anchorPid);
+          } else {
+            setPageIndex(0);
+            setChapterId(entry.chapterId);
+          }
+        }}
+      />
       <BookmarksPanel
         open={bookmarksOpen} onOpenChange={setBookmarksOpen} bookId={book.id}
         tocTitles={new Map(book.toc.map((t) => [t.chapterId, t.title]))}

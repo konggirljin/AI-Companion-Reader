@@ -33,7 +33,7 @@ async function buildEpub3(): Promise<ArrayBuffer> {
   zip.file('OEBPS/text/ch1.xhtml', `<?xml version="1.0"?>
     <html xmlns="http://www.w3.org/1999/xhtml"><body>
       <h1>Chapter One</h1>
-      <p>Hello world.</p>
+      <p id="s2">Hello world.</p>
       <p>   </p>
       <p>Second <b>para</b>.</p>
       <div><p>Nested para.</p></div>
@@ -85,7 +85,7 @@ describe('parseEpub (EPUB3)', () => {
 
     expect(book.toc).toEqual([
       { title: 'Chapter One', chapterId: '0', level: 0 },
-      { title: 'Section 1.2', chapterId: '0', level: 1 },
+      { title: 'Section 1.2', chapterId: '0', level: 1, anchorPid: '0:1' },
       { title: 'Chapter Two', chapterId: '1', level: 0 },
     ]);
 
@@ -112,6 +112,60 @@ describe('parseEpub (EPUB3)', () => {
 
   it('throws CORRUPT_EPUB on garbage', async () => {
     await expect(parseEpub(new ArrayBuffer(8))).rejects.toThrow('CORRUPT_EPUB');
+  });
+});
+
+async function buildEpubWithSubsections(): Promise<ArrayBuffer> {
+  const zip = new JSZip();
+  zip.file('mimetype', 'application/epub+zip');
+  zip.file('META-INF/container.xml', `<?xml version="1.0"?>
+    <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+      <rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles>
+    </container>`);
+  zip.file('OEBPS/content.opf', `<?xml version="1.0"?>
+    <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id">
+      <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+        <dc:title>Trilogy</dc:title>
+      </metadata>
+      <manifest>
+        <item id="bk1" href="text/book1.xhtml" media-type="application/xhtml+xml"/>
+        <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+      </manifest>
+      <spine><itemref idref="bk1"/></spine>
+    </package>`);
+  zip.file('OEBPS/nav.xhtml', `<?xml version="1.0"?>
+    <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+    <body><nav epub:type="toc"><ol>
+      <li><a href="text/book1.xhtml#book1">Book One</a>
+        <ol>
+          <li><a href="text/book1.xhtml#ch1">Chapter 1</a></li>
+          <li><a href="text/book1.xhtml#ch2">Chapter 2</a></li>
+        </ol>
+      </li>
+    </ol></nav></body></html>`);
+  zip.file('OEBPS/text/book1.xhtml', `<?xml version="1.0"?>
+    <html xmlns="http://www.w3.org/1999/xhtml"><body>
+      <h1 id="book1">Book One</h1>
+      <h2 id="ch1">Chapter 1</h2>
+      <p>First para.</p>
+      <h2 id="ch2">Chapter 2</h2>
+      <p>Second para.</p>
+    </body></html>`);
+  return zip.generateAsync({ type: 'arraybuffer' });
+}
+
+describe('parseEpub with subsection anchors (large chapter files)', () => {
+  it('maps each toc subsection to a distinct paragraph anchor within the shared chapter', async () => {
+    const book = await parseEpub(await buildEpubWithSubsections());
+    expect(book.toc).toEqual([
+      { title: 'Book One', chapterId: '0', level: 0, anchorPid: '0:0' },
+      { title: 'Chapter 1', chapterId: '0', level: 1, anchorPid: '0:1' },
+      { title: 'Chapter 2', chapterId: '0', level: 1, anchorPid: '0:3' },
+    ]);
+    const ch = book.chapters[0];
+    expect(ch.anchors).toMatchObject({ book1: '0:0', ch1: '0:1', ch2: '0:3' });
+    const anchorPids = book.toc.map((t) => t.anchorPid);
+    expect(new Set(anchorPids).size).toBe(anchorPids.length);
   });
 });
 

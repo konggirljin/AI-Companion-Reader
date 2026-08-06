@@ -1,4 +1,4 @@
-export interface TocEntry { title: string; chapterId: string; level: number }
+export interface TocEntry { title: string; chapterId: string; level: number; anchorPid?: string; anchor?: string }
 
 export interface Paragraph {
   id: string; // `${chapterIndex}:${paragraphIndex}`
@@ -9,7 +9,7 @@ export interface Paragraph {
 
 export interface ChapterImage { path: string; blob: Blob }
 
-export interface ParsedChapter { id: string; title: string; paragraphs: Paragraph[]; images: ChapterImage[] }
+export interface ParsedChapter { id: string; title: string; paragraphs: Paragraph[]; images: ChapterImage[]; anchors?: Record<string, string> }
 
 export interface ParsedBook {
   title: string;
