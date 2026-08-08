@@ -14,8 +14,7 @@ export function ImportButton({ onImported }: { onImported: () => void }) {
   const [busy, setBusy] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-  const doImport = async (mode?: 'native' | 'text') => {
-    const file = pendingFile;
+  const doImport = async (file: File | null, mode?: 'native' | 'text') => {
     if (!file) return;
     setPendingFile(null);
     setBusy(true);
@@ -43,8 +42,7 @@ export function ImportButton({ onImported }: { onImported: () => void }) {
       if (format === 'pdf') {
         setPendingFile(file);
       } else {
-        setPendingFile(file);
-        doImport();
+        void doImport(file);
       }
     } catch {
       toast.error(t('bookshelf.unsupportedFormat'));
@@ -73,7 +71,7 @@ export function ImportButton({ onImported }: { onImported: () => void }) {
             <Button
               variant="outline"
               className="h-auto flex-col items-start gap-1 p-4"
-              onClick={() => doImport('native')}
+              onClick={() => doImport(pendingFile, 'native')}
             >
               <span className="font-semibold">{t('bookshelf.pdfMode.native')}</span>
               <span className="text-xs text-muted-foreground whitespace-normal text-left">{t('bookshelf.pdfMode.nativeDesc')}</span>
@@ -81,7 +79,7 @@ export function ImportButton({ onImported }: { onImported: () => void }) {
             <Button
               variant="outline"
               className="h-auto flex-col items-start gap-1 p-4"
-              onClick={() => doImport('text')}
+              onClick={() => doImport(pendingFile, 'text')}
             >
               <span className="font-semibold">{t('bookshelf.pdfMode.text')}</span>
               <span className="text-xs text-muted-foreground whitespace-normal text-left">{t('bookshelf.pdfMode.textDesc')}</span>
