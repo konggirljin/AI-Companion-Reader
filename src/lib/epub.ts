@@ -37,6 +37,69 @@ function byLocal(root: Document | Element, name: string): Element | null {
   return null;
 }
 
+/** Collapse whitespace only — for exact heading comparison. */
+function collapseWs(s: string): string {
+  return s.replace(/\s+/g, '');
+}
+
+/** Collapse whitespace and strip a leading "第X部/章/卷" prefix for title comparison. */
+function normalizeHeading(s: string): string {
+  return collapseWs(s).replace(/^第(?:[一二三四五六七八九十百零〇]+|\d+)[部卷集章]/, '');
+}
+
+/** First heading paragraph text (h1-h6), empty if none. */
+function headingOf(ch: { paragraphs: Paragraph[] } | undefined): string {
+  const h = ch?.paragraphs.find((p) => /^h[1-6]$/.test(p.tag));
+  return h ? h.text.trim() : '';
+}
+
+/** Reconcile misaligned TOC labels with the actual content headings in the spine.
+ *  Some epubs ship a toc.ncx whose labels/hrefs are out of sync with the spine
+ *  content (e.g. chapter titles shifted relative to the files). When an entry's
+ *  label does not match the heading of the chapter its href resolves to, but does
+ *  match the heading of a different chapter, re-point the entry there so that
+ *  navigation lands on the content the label actually describes. */
+function reconcileToc(toc: TocEntry[], chapters: ParsedChapter[]): void {
+  const headingById = new Map<string, string>();
+  for (const c of chapters) {
+    const h = headingOf(c);
+    if (h) headingById.set(c.id, h);
+  }
+  for (const entry of toc) {
+    const current = headingById.get(entry.chapterId);
+    // Prefer an exact (whitespace-collapsed) heading match so that a label like
+    // "第十三章 蒙特里" resolves to the chapter whose heading is exactly that,
+    // not to a "蒙特里" part divider (which only matches after prefix stripping).
+    const exactTarget = exactMatchId(headingById, entry.title);
+    const exactCurrent = current && collapseWs(current) === collapseWs(entry.title);
+    if (exactTarget && (!current || !exactCurrent)) {
+      if (exactTarget !== entry.chapterId) {
+        entry.chapterId = exactTarget;
+        delete entry.anchor;
+        delete entry.anchorPid;
+      }
+      continue;
+    }
+    if (current && normalizeHeading(current) === normalizeHeading(entry.title)) continue;
+    let targetId: string | undefined;
+    for (const [id, h] of headingById) {
+      if (normalizeHeading(h) === normalizeHeading(entry.title)) { targetId = id; break; }
+    }
+    if (targetId && targetId !== entry.chapterId) {
+      entry.chapterId = targetId;
+      delete entry.anchor;
+      delete entry.anchorPid;
+    }
+  }
+}
+
+/** Chapter id whose heading equals `title` after whitespace collapsing, if any. */
+function exactMatchId(headingById: Map<string, string>, title: string): string | undefined {
+  const t = collapseWs(title);
+  for (const [id, h] of headingById) if (collapseWs(h) === t) return id;
+  return undefined;
+}
+
 function textOf(el: Element | null | undefined): string {
   return (el?.textContent ?? '').trim();
 }
@@ -221,8 +284,6 @@ export async function parseEpub(data: ArrayBuffer): Promise<ParsedBook> {
 
     // 4. Chapters
     const chapters: ParsedChapter[] = [];
-    const chapterTitles = new Map<string, string>();
-    for (const entry of toc) if (!chapterTitles.has(entry.chapterId)) chapterTitles.set(entry.chapterId, entry.title);
     for (let i = 0; i < spineHrefs.length; i++) {
       const path = spineHrefs[i];
       const doc = parseXml((await zip.file(path)?.async('text')) ?? '');
@@ -234,7 +295,14 @@ export async function parseEpub(data: ArrayBuffer): Promise<ParsedBook> {
         const blob = await blobAt(zip, imgPath);
         if (blob) images.push({ path: imgPath, blob });
       }
-      chapters.push({ id: String(i), title: chapterTitles.get(String(i)) ?? `Chapter ${i + 1}`, paragraphs, images, anchors });
+      chapters.push({ id: String(i), title: '', paragraphs, images, anchors });
+    }
+    reconcileToc(toc, chapters);
+    // Titles: prefer the file's own heading (ground truth), else the first TOC label for that chapter.
+    const chapterTitles = new Map<string, string>();
+    for (const entry of toc) if (!chapterTitles.has(entry.chapterId)) chapterTitles.set(entry.chapterId, entry.title);
+    for (const c of chapters) {
+      c.title = headingOf(c) || chapterTitles.get(c.id) || `Chapter ${Number(c.id) + 1}`;
     }
     if (!toc.length) {
       toc = chapters.map((c) => ({ title: c.title, chapterId: c.id, level: 0 }));

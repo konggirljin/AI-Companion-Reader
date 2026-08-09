@@ -215,3 +215,96 @@ describe('parseEpub (EPUB2 NCX)', () => {
     ]);
   });
 });
+
+async function buildMisalignedNcxEpub(): Promise<ArrayBuffer> {
+  const zip = new JSZip();
+  zip.file('META-INF/container.xml', `<?xml version="1.0"?>
+    <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+      <rootfiles><rootfile full-path="content.opf" media-type="application/oebps-package+xml"/></rootfiles>
+    </container>`);
+  zip.file('content.opf', `<?xml version="1.0"?>
+    <package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="id">
+      <metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Shifted Book</dc:title></metadata>
+      <manifest>
+        <item id="ch1" href="ch1.xhtml" media-type="application/xhtml+xml"/>
+        <item id="ch2" href="ch2.xhtml" media-type="application/xhtml+xml"/>
+        <item id="ch3" href="ch3.xhtml" media-type="application/xhtml+xml"/>
+        <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+      </manifest>
+      <spine toc="ncx"><itemref idref="ch1"/><itemref idref="ch2"/><itemref idref="ch3"/></spine>
+    </package>`);
+  // ncx labels are misaligned with the actual file contents (labels shifted by one).
+  zip.file('toc.ncx', `<?xml version="1.0"?>
+    <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+      <navMap>
+        <navPoint id="n1" playOrder="1"><navLabel><text>第一章 甲</text></navLabel><content src="ch3.xhtml"/></navPoint>
+        <navPoint id="n2" playOrder="2"><navLabel><text>第二章 乙</text></navLabel><content src="ch1.xhtml"/></navPoint>
+        <navPoint id="n3" playOrder="3"><navLabel><text>第三章 丙</text></navLabel><content src="ch2.xhtml"/></navPoint>
+      </navMap>
+    </ncx>`);
+  zip.file('ch1.xhtml', `<?xml version="1.0"?>
+    <html xmlns="http://www.w3.org/1999/xhtml"><body><h2>第一章 甲</h2><p>Content one.</p></body></html>`);
+  zip.file('ch2.xhtml', `<?xml version="1.0"?>
+    <html xmlns="http://www.w3.org/1999/xhtml"><body><h2>第二章 乙</h2><p>Content two.</p></body></html>`);
+  zip.file('ch3.xhtml', `<?xml version="1.0"?>
+    <html xmlns="http://www.w3.org/1999/xhtml"><body><h2>第三章 丙</h2><p>Content three.</p></body></html>`);
+  return zip.generateAsync({ type: 'arraybuffer' });
+}
+
+describe('parseEpub with misaligned ncx labels', () => {
+  it('re-points toc entries to the chapter whose content heading matches the label', async () => {
+    const book = await parseEpub(await buildMisalignedNcxEpub());
+    expect(book.toc).toEqual([
+      { title: '第一章 甲', chapterId: '0', level: 0 },
+      { title: '第二章 乙', chapterId: '1', level: 0 },
+      { title: '第三章 丙', chapterId: '2', level: 0 },
+    ]);
+    expect(book.chapters.map((c) => c.title)).toEqual(['第一章 甲', '第二章 乙', '第三章 丙']);
+  });
+});
+
+async function buildDividerCollisionEpub(): Promise<ArrayBuffer> {
+  const zip = new JSZip();
+  zip.file('META-INF/container.xml', `<?xml version="1.0"?>
+    <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+      <rootfiles><rootfile full-path="content.opf" media-type="application/oebps-package+xml"/></rootfiles>
+    </container>`);
+  zip.file('content.opf', `<?xml version="1.0"?>
+    <package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="id">
+      <metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Divider Book</dc:title></metadata>
+      <manifest>
+        <item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/>
+        <item id="c2" href="c2.xhtml" media-type="application/xhtml+xml"/>
+        <item id="c3" href="c3.xhtml" media-type="application/xhtml+xml"/>
+        <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+      </manifest>
+      <spine toc="ncx"><itemref idref="c1"/><itemref idref="c2"/><itemref idref="c3"/></spine>
+    </package>`);
+  // c1 is a part divider whose heading is just "蒙特里". The label "第三部 蒙特里"
+  // must resolve to it, but "第十三章 蒙特里" must resolve to the chapter whose
+  // heading is exactly "第十三章 蒙特里" (c3), even though c1 comes first.
+  zip.file('toc.ncx', `<?xml version="1.0"?>
+    <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+      <navMap>
+        <navPoint id="n1" playOrder="1"><navLabel><text>第三部 蒙特里</text></navLabel><content src="c1.xhtml"/></navPoint>
+        <navPoint id="n2" playOrder="2"><navLabel><text>第十三章 蒙特里</text></navLabel><content src="c2.xhtml"/></navPoint>
+      </navMap>
+    </ncx>`);
+  zip.file('c1.xhtml', `<?xml version="1.0"?>
+    <html xmlns="http://www.w3.org/1999/xhtml"><body><h1>蒙特里</h1><p>Part divider.</p></body></html>`);
+  zip.file('c2.xhtml', `<?xml version="1.0"?>
+    <html xmlns="http://www.w3.org/1999/xhtml"><body><p>Wrong body.</p></body></html>`);
+  zip.file('c3.xhtml', `<?xml version="1.0"?>
+    <html xmlns="http://www.w3.org/1999/xhtml"><body><h2>第十三章 蒙特里</h2><p>Right chapter.</p></body></html>`);
+  return zip.generateAsync({ type: 'arraybuffer' });
+}
+
+describe('parseEpub divider/chapter heading collision', () => {
+  it('prefers an exact heading match over a prefix-stripped divider match', async () => {
+    const book = await parseEpub(await buildDividerCollisionEpub());
+    expect(book.toc).toEqual([
+      { title: '第三部 蒙特里', chapterId: '0', level: 0 },
+      { title: '第十三章 蒙特里', chapterId: '2', level: 0 },
+    ]);
+  });
+});
