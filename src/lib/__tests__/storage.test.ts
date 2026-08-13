@@ -103,8 +103,9 @@ describe('bookmarks.ts + settings.ts', () => {
     saveSettings({ baseUrl: 'https://api.example.com/v1', apiKey: 'k', model: 'm', systemPromptTemplate: 'tpl {{personas}}', proxyUrl: '', language: 'en' });
     expect(getSettings().model).toBe('m');
     expect(getPrefs()).toEqual(DEFAULT_PREFS);
-    savePrefs({ fontSize: 20, fontFamily: 'serif', lineSpacing: 2.0, theme: 'amber', readingMode: 'paginated', pageAnimation: 'normal' });
+    savePrefs({ fontSize: 20, fontFamily: 'serif', lineSpacing: 2.0, theme: 'amber', readingMode: 'paginated', pageAnimation: 'normal', volumeKeys: true });
     expect(getPrefs().fontSize).toBe(20);
+    expect(getPrefs().volumeKeys).toBe(true);
   });
 });
 

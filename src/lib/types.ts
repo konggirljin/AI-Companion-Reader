@@ -93,6 +93,7 @@ export interface ReaderPrefs {
   theme: ReaderTheme;
   readingMode: ReadingMode;
   pageAnimation: PageAnimation;
+  volumeKeys: boolean;
 }
 
 export interface UserPersona {

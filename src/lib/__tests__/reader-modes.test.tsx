@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { PaginatedChapter } from '@/components/reader/paginated-chapter';
+import { getPageTurnDeltaForKey, PaginatedChapter } from '@/components/reader/paginated-chapter';
 import { LanguageProvider } from '@/lib/lang-context';
 import type { ReaderPrefs } from '@/lib/types';
 
@@ -18,6 +18,7 @@ const basePrefs: ReaderPrefs = {
   theme: 'amber',
   readingMode: 'paginated',
   pageAnimation: 'normal',
+  volumeKeys: false,
 };
 
 function renderReader(prefs: ReaderPrefs): string {
@@ -59,5 +60,12 @@ describe('reader modes', () => {
     expect(renderReader(basePrefs)).toContain('transition:transform 250ms ease-out');
     expect(renderReader({ ...basePrefs, pageAnimation: 'none' })).toContain('transition:none');
     expect(renderReader({ ...basePrefs, pageAnimation: 'slow' })).toContain('transition:transform 450ms ease-out');
+  });
+
+  it('maps volume buttons only when the preference is enabled', () => {
+    expect(getPageTurnDeltaForKey('AudioVolumeUp', '', true)).toBe(-1);
+    expect(getPageTurnDeltaForKey('AudioVolumeDown', '', true)).toBe(1);
+    expect(getPageTurnDeltaForKey('Unidentified', 'VolumeDown', true)).toBe(1);
+    expect(getPageTurnDeltaForKey('AudioVolumeDown', '', false)).toBeNull();
   });
 });

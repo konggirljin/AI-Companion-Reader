@@ -12,6 +12,21 @@ import { CommentPopover } from './comment-popover';
 
 export const PAGE_FLIP_EVENT = 'arc:page-flip';
 
+export function getPageTurnDeltaForKey(
+  key: string,
+  code: string,
+  volumeKeysEnabled: boolean,
+): -1 | 1 | null {
+  if (key === 'ArrowLeft') return -1;
+  if (key === 'ArrowRight') return 1;
+  if (!volumeKeysEnabled) return null;
+
+  const hardwareKeys = [key, code];
+  if (hardwareKeys.includes('AudioVolumeUp') || hardwareKeys.includes('VolumeUp')) return -1;
+  if (hardwareKeys.includes('AudioVolumeDown') || hardwareKeys.includes('VolumeDown')) return 1;
+  return null;
+}
+
 const GAP = 40;
 const PAGE_ANIMATION_MS: Record<ReaderPrefs['pageAnimation'], number> = {
   none: 0,
@@ -183,21 +198,20 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
     });
   }, [registerBackNav]);
 
-  // keyboard arrows
+  // Keyboard arrows and best-effort hardware volume keys. Mobile browsers usually
+  // reserve volume buttons for the OS, but some installed WebViews expose them.
   useEffect(() => {
     if (prefs.readingMode !== 'paginated') return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') {
-        window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: -1 }));
-        e.preventDefault();
-      } else if (e.key === 'ArrowRight') {
-        window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: 1 }));
-        e.preventDefault();
-      }
+      if (e.repeat) return;
+      const delta = getPageTurnDeltaForKey(e.key, e.code, prefs.volumeKeys);
+      if (delta == null) return;
+      window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: delta }));
+      e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [prefs.readingMode]);
+  }, [prefs.readingMode, prefs.volumeKeys]);
 
   // swipe via pointer events — works anywhere on screen, skips interactive elements
   useEffect(() => {

@@ -19,6 +19,7 @@ export const DEFAULT_PREFS: ReaderPrefs = {
   theme: 'amber',
   readingMode: 'paginated',
   pageAnimation: 'normal',
+  volumeKeys: false,
 };
 
 export function getSettings(): Settings {
