@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { continueWithPersona, extractJson, sendToPersonas } from '@/lib/ai';
+import { continueWithPersona, extractJson, findNumberedParagraph, sendToPersonas } from '@/lib/ai';
 import type { NumberedParagraph, Persona, Settings, Thread, UserPersona } from '@/lib/types';
 
 const settings: Settings = { baseUrl: 'https://api.test/v1', apiKey: 'k', model: 'm', systemPromptTemplate: 'P: {{personas}}', proxyUrl: '', language: 'en' };
@@ -97,6 +97,17 @@ describe('sendToPersonas', () => {
   });
 });
 
+describe('findNumberedParagraph', () => {
+  it('uses the original numbered index after an excerpt has been sliced', () => {
+    const sliced: NumberedParagraph[] = [
+      { index: 8, pid: '0:8', text: 'Eight' },
+      { index: 9, pid: '0:9', text: 'Nine' },
+    ];
+    expect(findNumberedParagraph(sliced, 9)?.pid).toBe('0:9');
+    expect(findNumberedParagraph(sliced, 1)).toBeUndefined();
+  });
+});
+
 describe('continueWithPersona', () => {
   it('keeps the passage and the selected companion conversation in context', async () => {
     const fetchMock = vi.fn().mockResolvedValue(apiResponse('Because the detail is suspicious.'));
@@ -127,6 +138,7 @@ describe('continueWithPersona', () => {
     vi.stubGlobal('fetch', fetchMock);
     const comments: Thread['comments'] = [
       { personaId: 'other', role: 'persona', text: 'Ignore this companion.' },
+      { personaId: 'other', role: 'user', text: 'Ignore this other companion question.' },
       ...Array.from({ length: 14 }, (_, index) => (
         index % 2 === 0
           ? { role: 'user' as const, text: `Question ${index}` }
@@ -148,6 +160,7 @@ describe('continueWithPersona', () => {
     const history = body.messages.slice(2, -1);
     expect(history).toHaveLength(12);
     expect(history.map((message: { content: string }) => message.content)).not.toContain('Ignore this companion.');
+    expect(history.map((message: { content: string }) => message.content)).not.toContain('Ignore this other companion question.');
     expect(history[0].content).toBe('Question 2');
   });
 });

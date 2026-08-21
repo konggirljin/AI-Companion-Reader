@@ -37,6 +37,69 @@ function byLocal(root: Document | Element, name: string): Element | null {
   return null;
 }
 
+/** Collapse whitespace only — for exact heading comparison. */
+function collapseWs(s: string): string {
+  return s.replace(/\s+/g, '');
+}
+
+/** Collapse whitespace and strip a leading "第X部/章/卷" prefix for title comparison. */
+function normalizeHeading(s: string): string {
+  return collapseWs(s).replace(/^第(?:[一二三四五六七八九十百零〇]+|\d+)[部卷集章]/, '');
+}
+
+/** First heading paragraph text (h1-h6), empty if none. */
+function headingOf(ch: { paragraphs: Paragraph[] } | undefined): string {
+  const h = ch?.paragraphs.find((p) => /^h[1-6]$/.test(p.tag));
+  return h ? h.text.trim() : '';
+}
+
+/** Reconcile misaligned TOC labels with the actual content headings in the spine.
+ *  Some epubs ship a toc.ncx whose labels/hrefs are out of sync with the spine
+ *  content (e.g. chapter titles shifted relative to the files). When an entry's
+ *  label does not match the heading of the chapter its href resolves to, but does
+ *  match the heading of a different chapter, re-point the entry there so that
+ *  navigation lands on the content the label actually describes. */
+function reconcileToc(toc: TocEntry[], chapters: ParsedChapter[]): void {
+  const headingById = new Map<string, string>();
+  for (const c of chapters) {
+    const h = headingOf(c);
+    if (h) headingById.set(c.id, h);
+  }
+  for (const entry of toc) {
+    const current = headingById.get(entry.chapterId);
+    // Prefer an exact (whitespace-collapsed) heading match so that a label like
+    // "第十三章 蒙特里" resolves to the chapter whose heading is exactly that,
+    // not to a "蒙特里" part divider (which only matches after prefix stripping).
+    const exactTarget = exactMatchId(headingById, entry.title);
+    const exactCurrent = current && collapseWs(current) === collapseWs(entry.title);
+    if (exactTarget && (!current || !exactCurrent)) {
+      if (exactTarget !== entry.chapterId) {
+        entry.chapterId = exactTarget;
+        delete entry.anchor;
+        delete entry.anchorPid;
+      }
+      continue;
+    }
+    if (current && normalizeHeading(current) === normalizeHeading(entry.title)) continue;
+    let targetId: string | undefined;
+    for (const [id, h] of headingById) {
+      if (normalizeHeading(h) === normalizeHeading(entry.title)) { targetId = id; break; }
+    }
+    if (targetId && targetId !== entry.chapterId) {
+      entry.chapterId = targetId;
+      delete entry.anchor;
+      delete entry.anchorPid;
+    }
+  }
+}
+
+/** Chapter id whose heading equals `title` after whitespace collapsing, if any. */
+function exactMatchId(headingById: Map<string, string>, title: string): string | undefined {
+  const t = collapseWs(title);
+  for (const [id, h] of headingById) if (collapseWs(h) === t) return id;
+  return undefined;
+}
+
 function textOf(el: Element | null | undefined): string {
   return (el?.textContent ?? '').trim();
 }
@@ -55,10 +118,13 @@ async function blobAt(zip: JSZip, path: string): Promise<Blob | undefined> {
 }
 
 /** Collect leaf block-level paragraphs in document order; strip dangerous nodes inline.
+ *  Also maps any element `id` (own or ancestor) onto the paragraph it falls inside, so TOC
+ *  fragment anchors (e.g. `chapter.xhtml#sec2`) can be resolved to a readable paragraph.
  *  NOTE: XML-parsed documents (application/xhtml+xml) preserve authored lowercase tagNames,
  *  HTML-parsed ones uppercase them — always normalize with toUpperCase() before set lookup. */
-function extractParagraphs(body: Element, chapterIndex: number, chapterDir: string): Paragraph[] {
+function extractParagraphs(body: Element, chapterIndex: number, chapterDir: string): { paragraphs: Paragraph[]; anchors: Record<string, string> } {
   const out: Paragraph[] = [];
+  const anchors: Record<string, string> = {};
   const tagOf = (el: Element) => el.tagName.toUpperCase();
 
   const emitBlock = (el: Element) => {
@@ -71,12 +137,20 @@ function extractParagraphs(body: Element, chapterIndex: number, chapterDir: stri
         alt: img.getAttribute('alt') ?? undefined,
       }));
     if (text || images.length) {
+      const id = `${chapterIndex}:${out.length}`;
       out.push({
-        id: `${chapterIndex}:${out.length}`,
+        id,
         text,
         tag: tag.toLowerCase() as Paragraph['tag'],
         ...(images.length ? { images } : {}),
       });
+      // record this block's id and nearest ancestor ids so fragment anchors resolve here
+      let node: Element | null = el;
+      while (node && node !== body && node.nodeType === 1) {
+        const nodeId = node.getAttribute('id');
+        if (nodeId && !(nodeId in anchors)) anchors[nodeId] = id;
+        node = node.parentElement;
+      }
     }
   };
 
@@ -102,7 +176,7 @@ function extractParagraphs(body: Element, chapterIndex: number, chapterDir: stri
     }
   };
   walk(body);
-  return out;
+  return { paragraphs: out, anchors };
 }
 
 /** Parse a nav.xhtml or toc.ncx element tree into flat entries with nesting level. */
@@ -114,9 +188,10 @@ function tocFromNav(navEl: Element, chapterDir: string, chapterIdByPath: Map<str
       const href = anchor?.getAttribute('href');
       const title = textOf(anchor);
       if (title && href) {
-        const path = resolvePath(chapterDir, href);
+        const [pathPart, frag] = href.split('#');
+        const path = resolvePath(chapterDir, pathPart);
         const chapterId = chapterIdByPath.get(path);
-        if (chapterId !== undefined) entries.push({ title, chapterId, level });
+        if (chapterId !== undefined) entries.push({ title, chapterId, level, ...(frag ? { anchor: frag } : {}) });
       }
       const sub = Array.from(li.children).find((c) => c.localName === 'ol' || c.localName === 'ul');
       if (sub) walkList(sub, level + 1);
@@ -137,8 +212,9 @@ function tocFromNcx(ncxDoc: Document, chapterDir: string, chapterIdByPath: Map<s
       if (child.localName === 'content') src = child.getAttribute('src') ?? '';
     }
     if (title && src) {
-      const chapterId = chapterIdByPath.get(resolvePath(chapterDir, src));
-      if (chapterId !== undefined) entries.push({ title, chapterId, level });
+      const [pathPart, frag] = src.split('#');
+      const chapterId = chapterIdByPath.get(resolvePath(chapterDir, pathPart));
+      if (chapterId !== undefined) entries.push({ title, chapterId, level, ...(frag ? { anchor: frag } : {}) });
     }
     for (const child of Array.from(np.children)) {
       if (child.localName === 'navPoint') walkPoint(child, level + 1);
@@ -208,23 +284,36 @@ export async function parseEpub(data: ArrayBuffer): Promise<ParsedBook> {
 
     // 4. Chapters
     const chapters: ParsedChapter[] = [];
-    const chapterTitles = new Map<string, string>();
-    for (const entry of toc) if (!chapterTitles.has(entry.chapterId)) chapterTitles.set(entry.chapterId, entry.title);
     for (let i = 0; i < spineHrefs.length; i++) {
       const path = spineHrefs[i];
       const doc = parseXml((await zip.file(path)?.async('text')) ?? '');
       const body = doc.body ?? doc.documentElement;
-      const paragraphs = body ? extractParagraphs(body, i, dirOf(path)) : [];
+      const { paragraphs, anchors } = body ? extractParagraphs(body, i, dirOf(path)) : { paragraphs: [], anchors: {} };
       const imagePaths = new Set(paragraphs.flatMap((p) => (p.images ?? []).map((im) => im.path)));
       const images: ChapterImage[] = [];
       for (const imgPath of imagePaths) {
         const blob = await blobAt(zip, imgPath);
         if (blob) images.push({ path: imgPath, blob });
       }
-      chapters.push({ id: String(i), title: chapterTitles.get(String(i)) ?? `Chapter ${i + 1}`, paragraphs, images });
+      chapters.push({ id: String(i), title: '', paragraphs, images, anchors });
+    }
+    reconcileToc(toc, chapters);
+    // Titles: prefer the file's own heading (ground truth), else the first TOC label for that chapter.
+    const chapterTitles = new Map<string, string>();
+    for (const entry of toc) if (!chapterTitles.has(entry.chapterId)) chapterTitles.set(entry.chapterId, entry.title);
+    for (const c of chapters) {
+      c.title = headingOf(c) || chapterTitles.get(c.id) || `Chapter ${Number(c.id) + 1}`;
     }
     if (!toc.length) {
       toc = chapters.map((c) => ({ title: c.title, chapterId: c.id, level: 0 }));
+    }
+    // Resolve TOC fragment anchors to readable paragraph ids within their shared chapter.
+    for (const entry of toc) {
+      if (!entry.anchor) continue;
+      const chapter = chapters[Number(entry.chapterId)];
+      const pid = chapter?.anchors?.[entry.anchor];
+      if (pid) entry.anchorPid = pid;
+      delete entry.anchor;
     }
 
     // 5. Cover: cover-image property → meta name="cover" → first chapter image (spec §5.6)

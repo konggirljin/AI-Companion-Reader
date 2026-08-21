@@ -9,11 +9,15 @@ interface TocDrawerProps {
   onOpenChange: (open: boolean) => void;
   toc: TocEntry[];
   currentChapterId: string;
-  onSelect: (chapterId: string) => void;
+  currentAnchorPid: string | null;
+  onSelect: (entry: TocEntry) => void;
 }
 
-export function TocDrawer({ open, onOpenChange, toc, currentChapterId, onSelect }: TocDrawerProps) {
+export function TocDrawer({ open, onOpenChange, toc, currentChapterId, currentAnchorPid, onSelect }: TocDrawerProps) {
   const { t } = useLang();
+  const isCurrent = (entry: TocEntry) =>
+    entry.chapterId === currentChapterId &&
+    (entry.anchorPid == null ? currentAnchorPid == null : entry.anchorPid === currentAnchorPid);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-80 overflow-y-auto">
@@ -21,11 +25,11 @@ export function TocDrawer({ open, onOpenChange, toc, currentChapterId, onSelect 
         <nav className="mt-4 space-y-0.5">
           {toc.map((entry, i) => (
             <button
-              key={`${entry.chapterId}-${i}`}
-              onClick={() => { onSelect(entry.chapterId); onOpenChange(false); }}
+              key={`${entry.chapterId}-${entry.anchorPid ?? ''}-${i}`}
+              onClick={() => { onSelect(entry); onOpenChange(false); }}
               className={cn(
                 'block w-full rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
-                entry.chapterId === currentChapterId && 'bg-accent font-medium',
+                isCurrent(entry) && 'bg-accent font-medium',
               )}
               style={{ paddingLeft: `${12 + entry.level * 16}px` }}
             >

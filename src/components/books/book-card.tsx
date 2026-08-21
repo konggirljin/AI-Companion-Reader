@@ -28,6 +28,7 @@ export function BookCard({ book, onChanged }: { book: Book; onChanged: () => voi
 
   const progressFraction = book.progress && book.chapterCount > 0
     ? (Number(book.progress.chapterId) + 1) / book.chapterCount
+    : book.progress && book.pageCount ? book.progress.pageIndex / book.pageCount
     : 0;
 
   return (

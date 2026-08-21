@@ -1,10 +1,11 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BookmarkPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
 import type { Book, NumberedParagraph, ParsedChapter, Persona, ReaderPrefs, Thread, ThreadComment } from '@/lib/types';
 import { idbGet, idbKeys } from '@/lib/storage/idb';
 import { saveProgress, updateBookStatus } from '@/lib/storage/books';
@@ -17,30 +18,41 @@ import { getSettings } from '@/lib/storage/settings';
 import { useLang } from '@/lib/lang-context';
 import { addThreads, appendThreadComments, listThreads } from '@/lib/storage/threads';
 
-import { continueWithPersona, sendToPersonas } from '@/lib/ai';
+import { continueWithPersona, findNumberedParagraph, sendToPersonas } from '@/lib/ai';
 import { countWords } from '@/lib/word-count';
 import type { ResolvedSelection } from '@/lib/selection';
 import { ReaderTopbar } from './reader-topbar';
 import { TocDrawer } from './toc-drawer';
 import { BookmarksPanel } from './bookmarks-panel';
 import { CommentsDrawer } from './comments-drawer';
-import { SelectionToolbar } from './selection-toolbar';
-import { PersonaPicker } from './persona-picker';
 import { PaginatedChapter, PAGE_FLIP_EVENT } from './paginated-chapter';
+import { PdfNativeReader } from './pdf-native-reader';
+import { ReaderBottomBar } from './reader-bottom-bar';
+import { PersonaPicker } from './persona-picker';
+import { SelectionToolbar } from './selection-toolbar';
 import { getActiveUserPersonaId, getUserPersona } from '@/lib/storage/user-personas';
 import type { UserPersona } from '@/lib/types';
 
 
 
 export function ReaderView({ book }: { book: Book }) {
+  if (book.pdfMode === 'native') {
+    return <PdfNativeReaderView book={book} />;
+  }
+  return <EpubReader book={book} />;
+}
+
+function EpubReader({ book }: { book: Book }) {
   const router = useRouter();
   const { t } = useLang();
   useReadingSession(book.id);
+
   const [chapterId, setChapterId] = useState<string>(book.progress?.chapterId ?? book.toc[0]?.chapterId ?? '0');
   const [chapter, setChapter] = useState<ParsedChapter | null>(null);
 
   const restorePidRef = useRef<string | null>(book.progress?.paragraphId ?? null);
   const restorePageRef = useRef<number>(book.progress?.pageIndex ?? 0);
+  const goToLastPageRef = useRef(false);
   const [prefs, setPrefs] = useState<ReaderPrefs>(() => getPrefs());
   const [tocOpen, setTocOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
@@ -156,25 +168,32 @@ export function ReaderView({ book }: { book: Book }) {
 
 
 
-  const chapterIndex = Number(chapterId);
+
   const goChapter = useCallback((delta: number) => {
     resetHideTimer();
-    const next = chapterIndex + delta;
-    if (next >= 0 && next < book.chapterCount) {
-      setChapterId(String(next));
-      setPageIndex(0);
-    } else if (delta > 0 && next >= book.chapterCount) {
+    const idx = book.toc.findIndex(e => e.chapterId === chapterId);
+    if (idx === -1) return;
+    const next = idx + delta;
+    if (next >= 0 && next < book.toc.length) {
+      setChapterId(book.toc[next].chapterId);
+      if (delta < 0) { goToLastPageRef.current = true; } else { setPageIndex(0); }
+    } else if (delta > 0 && next >= book.toc.length) {
       updateBookStatus(book.id, 'finished');
       toast.success(t('reader.finished'));
     }
-  }, [chapterIndex, book.chapterCount, book.id, resetHideTimer, t]);
+  }, [book.toc, book.id, chapterId, resetHideTimer, t]);
 
   const firstVisiblePidRef = useRef<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handlePageCount = useCallback((n: number) => {
     setPageCount(n);
-    setPageIndex((i) => Math.min(i, Math.max(0, n - 1)));
+    if (goToLastPageRef.current) {
+      goToLastPageRef.current = false;
+      setPageIndex(Math.max(0, n - 1));
+    } else {
+      setPageIndex((i) => Math.min(i, Math.max(0, n - 1)));
+    }
   }, []);
 
   const handleFirstVisiblePid = useCallback((pid: string) => {
@@ -210,14 +229,13 @@ export function ReaderView({ book }: { book: Book }) {
   };
 
   const handleOpenSettings = useCallback(() => {
-    if (settingsOpen) {
-      setSettingsOpen(false);
+    if (barsVisible) {
+      setBarsVisible(false);
     } else {
       setBarsVisible(true);
-      setSettingsOpen(true);
       clearHideTimer();
     }
-  }, [settingsOpen, clearHideTimer]);
+  }, [barsVisible, clearHideTimer]);
 
   const jumpTo = (targetChapterId: string, paragraphId: string) => {
     if (targetChapterId === chapterId) {
@@ -321,7 +339,7 @@ export function ReaderView({ book }: { book: Book }) {
       const comments = await sendToPersonas(excerpt, chosen, settings, userPersona);
       const byPid = new Map<string, ThreadComment[]>();
       for (const c of comments) {
-        const para = excerpt[c.paragraphIndex];
+        const para = findNumberedParagraph(excerpt, c.paragraphIndex);
         if (!para) continue;
         const arr = byPid.get(para.pid) ?? [];
         arr.push({ personaId: c.personaId, role: 'persona', text: c.text, createdAt: Date.now() });
@@ -385,7 +403,7 @@ export function ReaderView({ book }: { book: Book }) {
       const answer = await continueWithPersona(thread, persona, question, settings, userPersona);
       const now = Date.now();
       appendThreadComments(threadId, [
-        { role: 'user', text: question, createdAt: now },
+        { role: 'user', personaId: persona.id, text: question, createdAt: now },
         { role: 'persona', personaId: persona.id, text: answer, createdAt: now + 1 },
       ]);
       setThreadsVersion((version) => version + 1);
@@ -433,6 +451,21 @@ export function ReaderView({ book }: { book: Book }) {
     () => personas.filter(p => p.isDefault).map(p => p.id),
     [personas],
   );
+
+  // Which TOC subsection (anchor) is currently in view — only that entry should highlight.
+  const currentTocAnchorPid = () => {
+    if (!chapter) return null;
+    const visiblePid = firstVisiblePidRef.current;
+    const visibleIdx = visiblePid ? chapter.paragraphs.findIndex((p) => p.id === visiblePid) : -1;
+    let current: string | null = null;
+    for (const entry of book.toc) {
+      if (entry.chapterId === chapterId && entry.anchorPid) {
+        const idx = chapter.paragraphs.findIndex((p) => p.id === entry.anchorPid);
+        if (idx !== -1 && (visibleIdx === -1 || idx <= visibleIdx)) current = entry.anchorPid;
+      }
+    }
+    return current;
+  };
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
@@ -482,21 +515,32 @@ export function ReaderView({ book }: { book: Book }) {
         />
         </div>
       )}
-      {/* Chapter footer nav uses page-flip */}
-      {book.chapterCount > 1 && (
-        <div
-          className={`absolute bottom-0 left-0 right-0 z-50 transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-          onPointerDown={resetHideTimer}
-        >
-          <div className="mx-auto w-full max-w-2xl px-5 pb-4 flex items-center justify-center">
-          <span className="text-xs" style={{ color: 'var(--reader-muted, #8A6038)' }}>
-            {prefs.readingMode === 'paginated' ? `${pageIndex + 1} / ${pageCount} · ` : ''}
-            Ch {chapterIndex + 1}/{book.chapterCount}
-          </span>
-          </div>
-        </div>
-      )}
-      <TocDrawer open={tocOpen} onOpenChange={setTocOpen} toc={book.toc} currentChapterId={chapterId} onSelect={(cid) => { window.scrollTo({ top: 0 }); setChapterId(cid); }} />
+      <ReaderBottomBar
+        pageIndex={pageIndex}
+        pageCount={pageCount}
+        onPageIndexChange={(i) => { setPageIndex(i); resetHideTimer(); }}
+        onBookmark={addBookmarkHere}
+        onInteraction={resetHideTimer}
+        visible={barsVisible}
+        paginated={prefs.readingMode === 'paginated'}
+      />
+      <TocDrawer
+        open={tocOpen}
+        onOpenChange={setTocOpen}
+        toc={book.toc}
+        currentChapterId={chapterId}
+        currentAnchorPid={currentTocAnchorPid()}
+        onSelect={(entry) => {
+          window.scrollTo({ top: 0 });
+          if (entry.anchorPid) {
+            firstVisiblePidRef.current = entry.anchorPid;
+            jumpTo(entry.chapterId, entry.anchorPid);
+          } else {
+            setPageIndex(0);
+            setChapterId(entry.chapterId);
+          }
+        }}
+      />
       <BookmarksPanel
         open={bookmarksOpen} onOpenChange={setBookmarksOpen} bookId={book.id}
         tocTitles={new Map(book.toc.map((t) => [t.chapterId, t.title]))}
@@ -510,18 +554,6 @@ export function ReaderView({ book }: { book: Book }) {
         tocTitles={new Map(book.toc.map((t) => [t.chapterId, t.title]))}
         onJump={jumpTo}
       />
-      <div
-        className={`fixed bottom-6 right-6 z-40 transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        onPointerDown={resetHideTimer}
-      >
-        <Button
-          variant="secondary" size="icon"
-          className="h-11 w-11 rounded-full shadow-lg"
-          onClick={addBookmarkHere} aria-label={t('reader.bookmarkHere')}
-        >
-          <BookmarkPlus className="h-5 w-5" />
-        </Button>
-      </div>
       <SelectionToolbar position={toolbarPos && !sending ? toolbarPos : null} onOpenSendDialog={() => setSendModeOpen(true)} onHighlight={handleHighlight} />
       <PersonaPicker
         open={sendModeOpen}
@@ -530,6 +562,99 @@ export function ReaderView({ book }: { book: Book }) {
         defaultPersonaIds={defaultPersonaIds}
         onConfirm={(mode, ids) => void handleSendWithMode(mode, ids)}
       />
+    </div>
+  );
+}
+
+function PdfNativeReaderView({ book }: { book: Book }) {
+  const { t } = useLang();
+  const [pageIndex, setPageIndex] = useState(book.progress?.pageIndex ?? 0);
+  const [barsVisible, setBarsVisible] = useState(false);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearHideTimer = useCallback(() => {
+    if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
+  }, []);
+
+  const resetHideTimer = useCallback(() => {
+    clearHideTimer();
+    if (barsVisible) {
+      hideTimerRef.current = setTimeout(() => setBarsVisible(false), 5000);
+    }
+  }, [barsVisible, clearHideTimer]);
+
+  useEffect(() => {
+    if (barsVisible) resetHideTimer();
+    return () => clearHideTimer();
+  }, [barsVisible, resetHideTimer, clearHideTimer]);
+
+  const toggleBars = useCallback(() => {
+    if (barsVisible) {
+      setBarsVisible(false);
+      clearHideTimer();
+    } else {
+      setBarsVisible(true);
+    }
+  }, [barsVisible, clearHideTimer]);
+
+  const totalPages = book.pageCount ?? 0;
+
+  return (
+    <div className="relative h-screen w-full overflow-hidden">
+      <div
+        className={`absolute left-0 right-0 top-0 z-50 transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onPointerDown={resetHideTimer}
+      >
+        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
+          <div className="mx-auto flex h-12 max-w-2xl items-center justify-between px-2">
+            <Button variant="ghost" size="icon" asChild aria-label={t('reader.backToShelf')}>
+              <Link href="/"><ChevronLeft className="h-5 w-5" /></Link>
+            </Button>
+            <p className="mx-2 flex-1 truncate text-center text-sm font-medium">{book.title}</p>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground px-1">{t('reader.pdfNoCompanion')}</span>
+            </div>
+          </div>
+        </header>
+      </div>
+
+      <div className="h-full" onClick={toggleBars}>
+        <PdfNativeReader
+          bookId={book.id}
+          pageCount={totalPages}
+          onPageChange={(page) => setPageIndex(page - 1)}
+        />
+      </div>
+
+      <div
+        className={`absolute bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur transition-opacity duration-300 ${barsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onPointerDown={resetHideTimer}
+      >
+        <div className="mx-auto w-full max-w-2xl px-5 pb-2 pt-1.5">
+          <div className="grid grid-cols-3 items-center">
+            <div />
+            <span className="text-center text-xs text-foreground">
+              {t('reader.pdfPage', { page: pageIndex + 1, total: totalPages })}
+            </span>
+            <div />
+          </div>
+          {totalPages > 1 && (
+            <input
+              type="range"
+              min={0}
+              max={totalPages - 1}
+              value={pageIndex}
+              onChange={(e) => setPageIndex(Number(e.target.value))}
+              className="w-full h-1 mt-1 appearance-none rounded-full cursor-pointer"
+              style={{
+                background: 'var(--reader-muted, #8A6038)',
+                opacity: 0.3,
+                accentColor: 'var(--reader-muted, #8A6038)',
+              }}
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

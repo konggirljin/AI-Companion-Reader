@@ -6,6 +6,13 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 interface ChatMessage { role: string; content: string }
 
+export function findNumberedParagraph(
+  excerpt: NumberedParagraph[],
+  paragraphIndex: number,
+): NumberedParagraph | undefined {
+  return excerpt.find((paragraph) => paragraph.index === paragraphIndex);
+}
+
 export async function callChat(settings: Settings, messages: ChatMessage[]): Promise<string> {
   const targetUrl = `${settings.baseUrl.replace(/\/+$/, '')}/chat/completions`;
   // When a CORS proxy is configured, route the request through it.
@@ -111,7 +118,10 @@ Do not return JSON and do not mention being an AI.${readerContext}`;
     ? `…${thread.selectedText.slice(-12_000)}`
     : thread.selectedText;
   const history: ChatMessage[] = thread.comments
-    .filter((comment) => comment.role === 'user' || comment.personaId === persona.id)
+    .filter((comment) => (
+      comment.personaId === persona.id
+      || (comment.role === 'user' && !comment.personaId)
+    ))
     .slice(-12)
     .map((comment) => ({
       role: comment.role === 'user' ? 'user' : 'assistant',

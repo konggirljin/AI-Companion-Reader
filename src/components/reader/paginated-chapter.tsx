@@ -27,6 +27,11 @@ export function getPageTurnDeltaForKey(
   return null;
 }
 
+export function isEditablePageTurnTarget(target: EventTarget | null): boolean {
+  return target instanceof Element
+    && Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+}
+
 const GAP = 40;
 const PAGE_ANIMATION_MS: Record<ReaderPrefs['pageAnimation'], number> = {
   none: 0,
@@ -203,7 +208,7 @@ export function PaginatedChapter(props: PaginatedChapterProps) {
   useEffect(() => {
     if (prefs.readingMode !== 'paginated') return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
+      if (e.repeat || isEditablePageTurnTarget(e.target)) return;
       const delta = getPageTurnDeltaForKey(e.key, e.code, prefs.volumeKeys);
       if (delta == null) return;
       window.dispatchEvent(new CustomEvent(PAGE_FLIP_EVENT, { detail: delta }));

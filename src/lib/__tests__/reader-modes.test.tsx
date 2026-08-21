@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { getPageTurnDeltaForKey, PaginatedChapter } from '@/components/reader/paginated-chapter';
+import { getPageTurnDeltaForKey, isEditablePageTurnTarget, PaginatedChapter } from '@/components/reader/paginated-chapter';
 import { LanguageProvider } from '@/lib/lang-context';
 import type { ReaderPrefs } from '@/lib/types';
 
@@ -67,5 +67,11 @@ describe('reader modes', () => {
     expect(getPageTurnDeltaForKey('AudioVolumeDown', '', true)).toBe(1);
     expect(getPageTurnDeltaForKey('Unidentified', 'VolumeDown', true)).toBe(1);
     expect(getPageTurnDeltaForKey('AudioVolumeDown', '', false)).toBeNull();
+  });
+
+  it('does not treat page-turn keys as navigation while editing text', () => {
+    expect(isEditablePageTurnTarget(document.createElement('textarea'))).toBe(true);
+    expect(isEditablePageTurnTarget(document.createElement('input'))).toBe(true);
+    expect(isEditablePageTurnTarget(document.createElement('div'))).toBe(false);
   });
 });

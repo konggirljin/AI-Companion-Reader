@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 
-export type BookFormat = 'epub' | 'txt';
+export type BookFormat = 'epub' | 'txt' | 'pdf';
 
 const EPUB_MIME_TYPES = new Set([
   'application/epub+zip',
@@ -10,6 +10,10 @@ const EPUB_MIME_TYPES = new Set([
 const TEXT_MIME_TYPES = new Set([
   'text/plain',
   'text/markdown',
+]);
+
+const PDF_MIME_TYPES = new Set([
+  'application/pdf',
 ]);
 
 function hasZipSignature(data: ArrayBuffer): boolean {
@@ -24,6 +28,12 @@ function hasZipSignature(data: ArrayBuffer): boolean {
       || (bytes[2] === 0x07 && bytes[3] === 0x08)
     )
   );
+}
+
+function hasPdfSignature(data: ArrayBuffer): boolean {
+  if (data.byteLength < 4) return false;
+  const bytes = new Uint8Array(data, 0, 4);
+  return bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
 }
 
 async function hasEpubStructure(data: ArrayBuffer): Promise<boolean> {
@@ -76,6 +86,8 @@ export async function detectBookFormat(
   const mime = file.type.toLowerCase().split(';')[0].trim();
 
   if (name.endsWith('.epub') || EPUB_MIME_TYPES.has(mime)) return 'epub';
+
+  if (name.endsWith('.pdf') || PDF_MIME_TYPES.has(mime) || hasPdfSignature(data)) return 'pdf';
 
   if (hasZipSignature(data)) {
     if (await hasEpubStructure(data)) return 'epub';
