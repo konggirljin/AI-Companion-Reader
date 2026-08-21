@@ -4,6 +4,25 @@ const withPWA = withPWAInit({
   dest: 'public',
   disable: process.env.NODE_ENV === 'development',
   register: false, // we register manually in pwa-register.tsx
+  // TWA cold-start fix: the default start-url route uses NetworkFirst with no
+  // network timeout, so a cold TWA launch with a stalled connection blocks the
+  // navigation and leaves the splash screen stuck forever. Serve the cached app
+  // shell immediately (StaleWhileRevalidate) instead and revalidate in the background.
+  dynamicStartUrl: false,
+  extendDefaultRuntimeCaching: true,
+  workboxOptions: {
+    runtimeCaching: [
+      {
+        urlPattern: ({ sameOrigin, url }) => sameOrigin && url.pathname === '/',
+        handler: 'StaleWhileRevalidate',
+        method: 'GET',
+        options: {
+          cacheName: 'start-url',
+          expiration: { maxEntries: 32, maxAgeSeconds: 86400 },
+        },
+      },
+    ],
+  },
 });
 
 /** @type {import('next').NextConfig} */
