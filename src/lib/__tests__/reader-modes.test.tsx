@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { getPageTurnDeltaForKey, isEditablePageTurnTarget, PaginatedChapter } from '@/components/reader/paginated-chapter';
 import { LanguageProvider } from '@/lib/lang-context';
-import { PaginatedChapter } from '@/components/reader/paginated-chapter';
 import type { ReaderPrefs } from '@/lib/types';
 
 const chapter = {
@@ -18,27 +18,30 @@ const basePrefs: ReaderPrefs = {
   theme: 'amber',
   readingMode: 'paginated',
   pageAnimation: 'normal',
+  volumeKeys: false,
 };
 
 function renderReader(prefs: ReaderPrefs): string {
   return renderToStaticMarkup(
     <LanguageProvider>
       <PaginatedChapter
-      chapter={chapter}
-      imageUrls={new Map()}
-      prefs={prefs}
-      pageIndex={1}
-      pageCount={3}
-      onPageCountChange={() => {}}
-      onFirstVisiblePidChange={() => {}}
-      chapterThreads={[]}
-      pendingPids={[]}
-      personas={[]}
-      registerSelectionContainer={() => {}}
-      onSelectionResolve={() => {}}
-      onToolbarPos={() => {}}
-      registerBackNav={() => {}}
-      highlightedPids={new Map()}
+        chapter={chapter}
+        imageUrls={new Map()}
+        prefs={prefs}
+        pageIndex={1}
+        pageCount={3}
+        onPageCountChange={() => {}}
+        onFirstVisiblePidChange={() => {}}
+        chapterThreads={[]}
+        pendingPids={[]}
+        personas={[]}
+        replyingThreadId={null}
+        onContinueThread={async () => false}
+        registerSelectionContainer={() => {}}
+        onSelectionResolve={() => {}}
+        onToolbarPos={() => {}}
+        registerBackNav={() => {}}
+        highlightedPids={new Map()}
       />
     </LanguageProvider>,
   );
@@ -57,5 +60,18 @@ describe('reader modes', () => {
     expect(renderReader(basePrefs)).toContain('transition:transform 250ms ease-out');
     expect(renderReader({ ...basePrefs, pageAnimation: 'none' })).toContain('transition:none');
     expect(renderReader({ ...basePrefs, pageAnimation: 'slow' })).toContain('transition:transform 450ms ease-out');
+  });
+
+  it('maps volume buttons only when the preference is enabled', () => {
+    expect(getPageTurnDeltaForKey('AudioVolumeUp', '', true)).toBe(-1);
+    expect(getPageTurnDeltaForKey('AudioVolumeDown', '', true)).toBe(1);
+    expect(getPageTurnDeltaForKey('Unidentified', 'VolumeDown', true)).toBe(1);
+    expect(getPageTurnDeltaForKey('AudioVolumeDown', '', false)).toBeNull();
+  });
+
+  it('does not treat page-turn keys as navigation while editing text', () => {
+    expect(isEditablePageTurnTarget(document.createElement('textarea'))).toBe(true);
+    expect(isEditablePageTurnTarget(document.createElement('input'))).toBe(true);
+    expect(isEditablePageTurnTarget(document.createElement('div'))).toBe(false);
   });
 });

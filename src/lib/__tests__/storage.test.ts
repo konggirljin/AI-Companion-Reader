@@ -6,7 +6,7 @@ import {
   listUserPersonas, getUserPersona, saveUserPersona, deleteUserPersona,
   getActiveUserPersonaId, setActiveUserPersonaId,
 } from '@/lib/storage/user-personas';
-import { addThreads, listThreads, deleteThreadsForBook } from '@/lib/storage/threads';
+import { addThreads, appendThreadComments, listThreads, deleteThreadsForBook } from '@/lib/storage/threads';
 import { addBookmark, listBookmarks } from '@/lib/storage/bookmarks';
 import { getSettings, saveSettings, getPrefs, savePrefs, DEFAULT_SETTINGS, DEFAULT_PREFS } from '@/lib/storage/settings';
 import type { Thread } from '@/lib/types';
@@ -79,6 +79,18 @@ describe('threads.ts', () => {
     expect(listThreads('b1')).toHaveLength(0);
     expect(listThreads('b2')).toHaveLength(1);
   });
+  it('appends a user follow-up and companion reply to an existing thread', () => {
+    addThreads([t]);
+    appendThreadComments('t1', [
+      { role: 'user', text: 'Why?', createdAt: 2 },
+      { role: 'persona', personaId: 'p1', text: 'Because clues matter.', createdAt: 3 },
+    ]);
+    expect(listThreads('b1')[0].comments).toEqual([
+      { personaId: 'p1', text: 'ha!' },
+      { role: 'user', text: 'Why?', createdAt: 2 },
+      { role: 'persona', personaId: 'p1', text: 'Because clues matter.', createdAt: 3 },
+    ]);
+  });
 });
 
 describe('bookmarks.ts + settings.ts', () => {
@@ -91,8 +103,9 @@ describe('bookmarks.ts + settings.ts', () => {
     saveSettings({ baseUrl: 'https://api.example.com/v1', apiKey: 'k', model: 'm', systemPromptTemplate: 'tpl {{personas}}', proxyUrl: '', language: 'en' });
     expect(getSettings().model).toBe('m');
     expect(getPrefs()).toEqual(DEFAULT_PREFS);
-    savePrefs({ fontSize: 20, fontFamily: 'serif', lineSpacing: 2.0, theme: 'amber', readingMode: 'paginated', pageAnimation: 'normal' });
+    savePrefs({ fontSize: 20, fontFamily: 'serif', lineSpacing: 2.0, theme: 'amber', readingMode: 'paginated', pageAnimation: 'normal', volumeKeys: true });
     expect(getPrefs().fontSize).toBe(20);
+    expect(getPrefs().volumeKeys).toBe(true);
   });
 });
 

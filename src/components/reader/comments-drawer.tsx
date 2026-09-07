@@ -36,7 +36,11 @@ export function CommentsDrawer({ open, onOpenChange, bookId, personas, tocTitles
 
   const activePersonaIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const t of threads) for (const c of t.comments) ids.add(c.personaId);
+    for (const thread of threads) {
+      for (const comment of thread.comments) {
+        if (comment.personaId) ids.add(comment.personaId);
+      }
+    }
     return Array.from(ids);
   }, [threads]);
 
@@ -74,7 +78,8 @@ export function CommentsDrawer({ open, onOpenChange, bookId, personas, tocTitles
                 {tocTitles.get(chapterId) ?? `Chapter ${Number(chapterId) + 1}`}
               </p>
               {group.map((thread) => {
-                const firstPersona = personaById.get(thread.comments[0].personaId);
+                const firstPersonaComment = thread.comments.find((comment) => comment.role !== 'user' && comment.personaId);
+                const firstPersona = firstPersonaComment?.personaId ? personaById.get(firstPersonaComment.personaId) : undefined;
                 return (
                   <button key={thread.id} className="w-full rounded-md border p-3 text-left hover:bg-muted/50"
                     onClick={() => { onJump(thread.chapterId, thread.paragraphId); onOpenChange(false); }}>
@@ -84,7 +89,7 @@ export function CommentsDrawer({ open, onOpenChange, bookId, personas, tocTitles
                       {thread.comments.length > 1 && <Badge variant="outline" className="ml-auto">+{thread.comments.length - 1}</Badge>}
                     </div>
                     <p className="mt-1 line-clamp-2 text-xs italic text-muted-foreground">&ldquo;{thread.selectedText.slice(0, 80)}{thread.selectedText.length > 80 ? '…' : ''}&rdquo;</p>
-                    <p className="mt-1 line-clamp-3 text-sm">{thread.comments[0].text}</p>
+                    <p className="mt-1 line-clamp-3 text-sm">{firstPersonaComment?.text ?? thread.comments[0]?.text}</p>
                   </button>
                 );
               })}

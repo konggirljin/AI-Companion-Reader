@@ -23,7 +23,15 @@ function makeFile(name: string, type: string): File {
 }
 
 async function selectFile(input: HTMLInputElement, file: File) {
-  const fileList = { length: 1, 0: file, item: (i: number) => (i === 0 ? file : null) };
+  await selectFiles(input, [file]);
+}
+
+async function selectFiles(input: HTMLInputElement, files: File[]) {
+  const fileList = {
+    length: files.length,
+    item: (i: number) => files[i] ?? null,
+    ...Object.fromEntries(files.map((file, index) => [index, file])),
+  };
   Object.defineProperty(input, 'files', { value: fileList, configurable: true });
   await act(async () => {
     input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -84,5 +92,23 @@ describe('ImportButton', () => {
     expect(mocks.importBook).not.toHaveBeenCalled();
     expect(document.body.textContent).toContain('Import PDF as');
     expect(onImported).not.toHaveBeenCalled();
+  });
+
+  it('imports multiple EPUB, TXT, and PDF files as one batch', async () => {
+    const onImported = mount();
+    const input = container.querySelector('input[type=file]') as HTMLInputElement;
+    const files = [
+      makeFile('one.epub', 'application/epub+zip'),
+      makeFile('two.txt', 'text/plain'),
+      makeFile('three.pdf', 'application/pdf'),
+    ];
+    mocks.importBook.mockResolvedValue({ title: 'Book', id: 'x' });
+
+    await selectFiles(input, files);
+
+    expect(mocks.detectBookFormat).not.toHaveBeenCalled();
+    expect(mocks.importBook).toHaveBeenCalledTimes(3);
+    expect(mocks.importBook.mock.calls.map(([file]) => file.name)).toEqual(files.map((file) => file.name));
+    expect(onImported).toHaveBeenCalledTimes(1);
   });
 });

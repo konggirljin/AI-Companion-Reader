@@ -30,6 +30,7 @@ export interface Book {
   addedAt: number;
   order: number;
   chapterCount: number;
+  sourceFingerprint?: string;  // prevents duplicate imports during folder scans
   pageCount?: number;
   status?: 'favorites' | 'toRead' | 'finished';
   progress?: { chapterId: string; paragraphId: string; pageIndex: number };
@@ -45,7 +46,12 @@ export interface Persona {
   createdAt: number;
 }
 
-export interface ThreadComment { personaId: string; text: string }
+export interface ThreadComment {
+  personaId?: string;
+  role?: 'persona' | 'user'; // missing role means a legacy persona comment
+  text: string;
+  createdAt?: number;
+}
 
 export interface Thread {
   id: string;
@@ -89,6 +95,7 @@ export interface ReaderPrefs {
   theme: ReaderTheme;
   readingMode: ReadingMode;
   pageAnimation: PageAnimation;
+  volumeKeys: boolean;
 }
 
 export interface UserPersona {

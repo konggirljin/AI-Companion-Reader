@@ -87,6 +87,23 @@ export function ReaderSettings({ open, onOpenChange, prefs, onChange }: ReaderSe
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-2">
+          <Label>Volume buttons</Label>
+          <Select
+            value={prefs.volumeKeys ? 'on' : 'off'}
+            disabled={prefs.readingMode === 'scroll'}
+            onValueChange={(v) => onChange({ ...prefs, volumeKeys: v === 'on' })}
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="off">Off</SelectItem>
+              <SelectItem value="on">Volume up: previous / down: next</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Works only when your phone browser exposes volume-key events to the reader.
+          </p>
+        </div>
       </DialogContent>
     </Dialog>
   );
