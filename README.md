@@ -1,5 +1,6 @@
 # AI Reading Companion
-https://reader-companion-pink.vercel.app/
+綫上網站：https://reader-companion-pink.vercel.app/
+在Play Store下載：https://play.google.com/store/apps/details?id=app.vercel.reader_companion_pink.twa
 ---
 
 ## 簡介
@@ -22,6 +23,8 @@ AI Reader Companion 是一個免費的閲讀器，讓你在瀏覽器或手機上
 ## About
 
 AI Reading Companion is an AI-powered reading tool that lets you read EPUB and TXT books in your browser while discussing the content with AI companions.
+Read in your browser：https://reader-companion-pink.vercel.app/
+Download in Play Store：https://play.google.com/store/apps/details?id=app.vercel.reader_companion_pink.twa
 
 ### Features
 
