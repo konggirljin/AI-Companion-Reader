@@ -1,5 +1,6 @@
 # AI Reading Companion
 綫上網站：https://reader-companion-pink.vercel.app/
+
 在Play Store下載：https://play.google.com/store/apps/details?id=app.vercel.reader_companion_pink.twa
 ---
 
